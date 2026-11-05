@@ -1,0 +1,24 @@
+﻿# сейвы и дампы
+*.ck3
+gamestate*.json
+_source/
+_cache/
+out/
+vault/
+
+# токены и логи
+tokens_1.tok
+*.log
+
+# служебное
+target/
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+# артефакты сборки и импорта
+_export/
+import/
+
+app/_export/

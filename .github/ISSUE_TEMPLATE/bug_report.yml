@@ -1,0 +1,56 @@
+name: Bug report
+description: Something is broken — a screen, an import, a test
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение. Чтобы разобраться, нужны три вещи: что вы делали, что ожидали и что получилось.
+        Thanks for the report. Three things help: what you did, what you expected, what happened.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Где / Where
+      options:
+        - Род / House
+        - Мир и карта / World and map
+        - Хроника / Chronicle
+        - Свод и досье / Compendium and dossier
+        - Импорт сохранения / Save import
+        - Запуск / Launcher
+        - Проверки / Tests
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия / Version
+      description: Из файла VERSION или с экрана загрузки / from VERSION or the loading screen
+      placeholder: 0.1.0-alpha
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Что делали / Steps
+      placeholder: 1. start.cmd → 2. Своё сохранение → 3. выбрал autosave.ck3 → 4. …
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидали / Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Что получилось / Actual
+      description: Если импорт — вставьте последние строки журнала. Если экран — что на нём написано.
+    validations:
+      required: true
+  - type: textarea
+    id: env
+    attributes:
+      label: Окружение / Environment
+      placeholder: Windows 11, Node 20.11, Chrome 130, CK3 1.20.x, язык сейва русский

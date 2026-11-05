@@ -1,0 +1,14 @@
+NOTICE
+
+Этот проект использует и патчит сторонний код:
+
+  CK3-history-extractor
+  Copyright (c) TCA
+  https://github.com/TCA166/CK3-history-extractor
+  Лицензия: MIT (см. https://github.com/TCA166/CK3-history-extractor/blob/main/license.txt)
+
+Файл patches/extractor-1.20.patch — производная работа на основе этого кода
+и распространяется на тех же условиях (MIT).
+
+Игровые данные (названия, локализация) принадлежат Paradox Interactive.
+Проект не связан с Paradox Interactive и не распространяет файлы игры.

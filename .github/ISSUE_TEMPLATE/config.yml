@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Вопрос по запуску / Setup question
+    url: https://github.com/agapovpavel387-code/ck3-chronicle/blob/main/README.md
+    about: Быстрый старт, импорт сохранения и известные ограничения — в README / quick start, save import and limitations are in the README

@@ -21,4 +21,8 @@ Thumbs.db
 _export/
 import/
 
+# локальная сборка экстрактора (патч 1.20 + токены + шаблоны)
+vendor/
+*.exe
+
 app/_export/

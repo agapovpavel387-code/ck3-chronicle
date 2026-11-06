@@ -223,7 +223,22 @@ def main() -> None:
         dump = work / "gamestate.json"
         read_command[read_command.index("-o") + 1] = str(work)
         read_command[read_command.index("--dump") + 1] = str(dump)
-        run(read_command, "Reading the save (repeat)", cwd=extractor.parent)
+        try:
+            run(read_command, "Reading the save (repeat)", cwd=extractor.parent)
+        except SystemExit:
+            pass
+    if not dump.exists() or dump.stat().st_size < 1_000_000:
+        # Последняя попытка: дамп рядом с экстрактором. Туда запись проходит даже
+        # когда защита Windows не пускает стороннюю программу в выбранную папку.
+        beside = extractor.parent / "gamestate.json"
+        read_command[read_command.index("-o") + 1] = str(extractor.parent)
+        read_command[read_command.index("--dump") + 1] = str(beside)
+        try:
+            run(read_command, "Reading the save (beside the extractor)", cwd=extractor.parent)
+            if beside.exists():
+                shutil.move(str(beside), str(dump))
+        except SystemExit:
+            pass
     if not dump.exists() or dump.stat().st_size < 1_000_000:
         raise SystemExit(
             f"Дамп не создан или слишком мал: {dump}. "

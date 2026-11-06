@@ -1,0 +1,69 @@
+# Хроника рода 0.1.0-alpha — заметки к выпуску
+
+**Что это.** Локальное приложение, которое читает сохранение Crusader Kings III и показывает мир глазами одной семьи: что до рода дошло — своим знанием, вестями и молвой. Ничего не отправляется в сеть, аккаунт не нужен.
+
+**Совместимость.** Crusader Kings III 1.20.x, формат сейва 1.20. Проверено на сохранении 995 года с русской локализацией. Более ранние форматы (1.19 и ниже) разбираются экстрактором, но приложение проверено на 1.20.
+
+## Как запустить
+
+1. Распакуйте архив.
+2. **Windows:** `start.cmd`. **macOS/Linux:** `./start.sh`.
+3. Откроется `http://127.0.0.1:8778/`.
+
+Нужен Node.js (рекомендуется, без зависимостей) или Python 3. Для импорта своих сохранений нужны пакеты `ijson`, `numpy`, `pillow` — страница импорта проверит их и предложит установить.
+
+## Что внутри альфы
+
+- пять экранов: Род, Мир, Хроника, Свод, Досье;
+- род конспектом по слоям и полотном с панорамой;
+- две линзы карты, у политической два слоя: по домам и земли рода;
+- хроника главами, тремя слоями и нитями войн и распрь;
+- импорт своего сохранения из панели, с журналом и отменой;
+- интерфейс на русском и английском: переключатель RU/EN, выбор запоминается.
+
+## Чего в альфе нет
+
+- **Веры.** Сейв 1.20 хранит определения вер, но не привязку к людям и графствам. Приложение пишет об этом прямо, а не угадывает.
+- **Причин событий.** «Попал в темницу», «потерял титул» — без «почему»: сейв мотивов не хранит.
+- **Имён за третьим кольцом.** Там известна только держава: это кольцо молвы, а не пробел летописца.
+- **Полной генеалогии.** Записи о рождениях есть там, где о них дошла весть; в дереве детей может быть больше.
+
+## Что сообщать
+
+Если что-то падает — пришлите строки из журнала импорта (они видны на странице «Своё сохранение») и `python tools/doctor.py --dump out/gamestate.json`. По ним видно, на каком шаге и почему.
+
+---
+
+# Chronicle of the House 0.1.0-alpha — release notes
+
+**What it is.** A local app that reads a Crusader Kings III save and shows the world through one family's eyes: what actually reached the house — its own records, messages, and hearsay. Nothing is sent over the network, no account needed.
+
+**Compatibility.** Crusader Kings III 1.20.x, save format 1.20. Tested on a 995 save with the Russian localization. Older formats (1.19 and below) are handled by the extractor, but the app is verified on 1.20.
+
+## How to start
+
+1. Unpack the archive.
+2. **Windows:** `start.cmd`. **macOS/Linux:** `./start.sh`.
+3. The browser opens `http://127.0.0.1:8778/`.
+
+Either Node.js (recommended, no dependencies) or Python 3 is enough. Importing your own saves needs `ijson`, `numpy`, `pillow` — the import page checks them and offers a one-click install.
+
+## What is in this alpha
+
+- five screens: House, World, Chronicle, Compendium, Dossier;
+- the house as a layered outline and as a pannable canvas;
+- two map lenses, the political one with two layers: by house and family lands;
+- a chronicle in chapters, three layers per year, with threads for wars and feuds;
+- importing your own save from the page, with a live log and a stop button;
+- the interface in Russian and English, with a RU/EN switch that remembers the choice.
+
+## What is not here
+
+- **Faith.** The 1.20 save keeps faith definitions but no link to people or counties. The app says so instead of guessing.
+- **Causes.** "Imprisoned", "lost a title" — without "why": the save does not record motives.
+- **Names beyond the third ring.** Only the realm is known there: that is the ring of hearsay, not a gap in the chronicler's work.
+- **Complete genealogy.** Births are recorded where a message arrived; the tree may hold more children.
+
+## What to report
+
+If something fails, send the lines from the import log (visible on the "Your save" page) and `python tools/doctor.py --dump out/gamestate.json`. They show the step and the reason.

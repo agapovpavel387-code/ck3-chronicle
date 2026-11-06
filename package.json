@@ -1,0 +1,16 @@
+{
+  "name": "ck3-chronicle",
+  "version": "0.1.0-alpha",
+  "private": true,
+  "description": "Chronicle of the House: a local app over a Crusader Kings III save",
+  "license": "MIT",
+  "scripts": {
+    "test": "node tools/check_app.js app && node tools/check_tree.js app && node tools/check_chronicle.js app && node tools/check_lens.js app",
+    "start": "node tools/serve.js --open",
+    "import": "node tools/serve.js --open",
+    "doctor": "python tools/doctor.py"
+  },
+  "devDependencies": {
+    "jsdom": "^24.0.0"
+  }
+}

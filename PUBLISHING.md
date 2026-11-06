@@ -5,7 +5,7 @@ A checklist: what is ready and what to do by hand when publishing.
 
 ## Что готово
 
-- один коммит в ветке `main`, рабочее дерево чистое;
+- ветка `main`, рабочее дерево чистое; авторы коммитов — ваш аккаунт;
 - тег `v0.1.0-alpha`;
 - `VERSION`, `CHANGELOG.md`, `RELEASE_NOTES.md`;
 - README на двух языках, `CONTRIBUTING.md`, шаблон issue;

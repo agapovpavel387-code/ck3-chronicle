@@ -15,6 +15,6 @@ jobs:
         with:
           node-version: '20'
       - name: Install test dependency
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Run checks
         run: npm test

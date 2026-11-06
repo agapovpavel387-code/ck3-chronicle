@@ -13,6 +13,16 @@ A local, offline app that turns a Crusader Kings III save into a **family chroni
 
 The interface itself is in Russian, because it is built from a Russian-localized save; this document covers setup and usage for English speakers.
 
+## Screenshots
+
+| Tree | World |
+|---|---|
+| ![Family tree](docs/screenshots/tree.png) | ![World map](docs/screenshots/world.png) |
+
+| Chronicle | Book |
+|---|---|
+| ![Chronicle by year](docs/screenshots/chronicle.png) | ![Generations](docs/screenshots/book.png) |
+
 ## Quick start
 
 1. Download or clone this repository.
@@ -152,7 +162,7 @@ Four suites: app (37 checks), house outline (15), chronicle (14), map lenses (12
 
 ## Data and privacy
 
-The repository contains one demo world, built from a personal save; it holds names that come from the game. If you would rather not publish game data, delete `app/_data/` and build your own: the app then shows an empty state with instructions.
+The repository contains one demo world, built from a game save; it holds only names the game generates itself — dynasties, houses, provinces, events. It contains no paths, addresses or other personal data (all strings of `world.json` were checked). If you would rather not publish even game data, delete `app/_data/` and build your own: the app then shows an empty state with instructions.
 
 Saves (`.ck3`), dumps (`gamestate.json`, hundreds of megabytes), the map cache and token files are not in the repository — they are covered by `.gitignore`.
 

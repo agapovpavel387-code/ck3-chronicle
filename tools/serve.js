@@ -244,7 +244,6 @@ function startImport(options) {
     '--save', save,
     '--extractor', extractor,
     '--yes',
-    '--work', WORK,
     '--out', DATA,
     '--lang', options.lang || 'russian',
   ];

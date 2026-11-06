@@ -35,7 +35,7 @@ except Exception:
 ROOT = Path(__file__).resolve().parent.parent
 APP_DATA = ROOT / "app" / "_data"
 CACHE = ROOT / "_cache"
-DEFAULT_WORK = ROOT / "import"
+DEFAULT_WORK = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import"
 
 
 def ask(question: str, default: str | None = None) -> str:
@@ -106,6 +106,42 @@ def check_packages() -> list[str]:
     return missing
 
 
+
+def dir_is_writable(path: Path) -> bool:
+    """Проверяем запись делом: Desktop и OneDrive часто закрыты для сторонних программ."""
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / ".write-test"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink()
+        return True
+    except OSError:
+        return False
+
+
+def pick_work(preferred: Path) -> Path:
+    """Рабочая папка: сначала выбранная, потом запасные вне синхронизируемых мест."""
+    candidates = [
+        preferred,
+        Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import",
+        ROOT / "import",
+        Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import",
+        Path(os.environ.get("TEMP", "/tmp")) / "ck3-chronicle" / "import",
+    ]
+    seen = []
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.append(candidate)
+        if dir_is_writable(candidate):
+            return candidate
+        print(f"Папка недоступна для записи: {candidate}")
+    raise SystemExit(
+        "Не нашлось папки, куда можно писать. Укажите --work на обычную папку, "
+        "например C:\\ck3-chronicle\\import"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import a CK3 save into the app.")
     parser.add_argument("--save", help="path to a .ck3 save")
@@ -151,9 +187,10 @@ def main() -> None:
         if not extractor.exists():
             raise SystemExit(f"Extractor not found: {extractor}")
 
-    work = Path(args.work)
-    work.mkdir(parents=True, exist_ok=True)
+    work = pick_work(Path(args.work))
     dump = work / "gamestate.json"
+    if str(work) != str(Path(args.work)):
+        print(f"Рабочая папка: {work}")
 
     print(f"Save:      {save}")
     print(f"Game:      {game}")
@@ -168,19 +205,25 @@ def main() -> None:
         print("\n== Map cache: already built ==")
 
     # 5. Dump the save.
-    run(
-        [
-            str(extractor),
-            str(save),
-            "-g", str(game),
-            "-l", args.lang,
-            "-o", str(work),
-            "-n", "--no-vis",
-            "--dump", str(dump),
-        ],
-        "Reading the save",
-        cwd=extractor.parent,   # экстрактор ищет свои шаблоны рядом с собой
-    )
+    read_command = [
+        str(extractor),
+        str(save),
+        "-g", str(game),
+        "-l", args.lang,
+        "-o", str(work),
+        "-n", "--no-vis",
+        "--dump", str(dump),
+    ]
+    try:
+        run(read_command, "Reading the save", cwd=extractor.parent)  # шаблоны лежат рядом с экстрактором
+    except SystemExit:
+        # Отказано в записи (Desktop, OneDrive, защита Windows) — переезжаем в запасную папку.
+        print("\nЭкстрактор не смог записать дамп. Пробую другую рабочую папку.")
+        work = pick_work(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import")
+        dump = work / "gamestate.json"
+        read_command[read_command.index("-o") + 1] = str(work)
+        read_command[read_command.index("--dump") + 1] = str(dump)
+        run(read_command, "Reading the save (repeat)", cwd=extractor.parent)
     if not dump.exists() or dump.stat().st_size < 1_000_000:
         raise SystemExit(
             f"Дамп не создан или слишком мал: {dump}. "

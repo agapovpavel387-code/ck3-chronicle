@@ -186,6 +186,12 @@ It reports the date, how many dynasties and houses were read, how many houses ar
 - **Dates and names come from the save only.** Where the game did not record a name, the chronicle says "name unknown" rather than inventing one.
 - **Causes are not in the save.** The game records that someone was imprisoned or that a title changed hands, not why; the chronicle does not fill that gap.
 
+## Built on
+
+Saves are read by [CK3-history-extractor](https://github.com/TCA166/CK3-history-extractor), a third-party project by TCA (Tomasz Chady). It is the piece that turns a `.ck3` file into characters, titles, houses, cultures and events; everything here is only about how those facts get told.
+
+Thanks, TCA. Without your extractor this app would not exist — `patches/` holds the 1.20 fixes, but being able to read the save at all is your work.
+
 ## License
 
 Application code and tools are MIT, see `LICENSE`. Third-party notices are in `NOTICE`: the extractor patch is derived from TCA166/CK3-history-extractor (MIT). Game data and localization belong to Paradox Interactive; this project is not affiliated with Paradox and does not redistribute game files.

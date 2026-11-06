@@ -133,7 +133,7 @@ python tools/build_world.py --dump out\gamestate.json `
 
 Without `--game` the world is still built, just without a map: the map needs `map_data` and `common/landed_titles` from the game.
 
-Text saves are read directly. Binary saves (autosaves, ironman) need tokens: `tools/tokens.ps1` launches the game, waits for `oos_dump` and picks up `tokens_1.tok`.
+Text saves are read directly. Binary saves (autosaves, ironman) need tokens: `tools/tokens.ps1` launches the game, waits for `oos_dump` and picks up `tokens_1.tok`. Put the resulting `tokens_1.tok` next to the extractor (`vendor/` in the project or the folder with `ck3_history_extractor.exe`): the extractor looks there, in the working folder and in `%USERPROFILE%`.
 
 ## Extractor and the 1.20 save format
 

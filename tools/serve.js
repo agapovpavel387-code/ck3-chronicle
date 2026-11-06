@@ -64,11 +64,13 @@ function findExe(dir, depth) {
   } catch {
     return '';
   }
+  let fallback = '';
   for (const entry of entries) {
-    if (entry.isFile() && /^ck3_history_extractor.*\.exe$/i.test(entry.name)) {
-      return path.join(dir, entry.name);
-    }
+    if (!entry.isFile() || !/^ck3_history_extractor.*\.exe$/i.test(entry.name)) continue;
+    if (entry.name.toLowerCase() === 'ck3_history_extractor.exe') return path.join(dir, entry.name);
+    if (!fallback) fallback = path.join(dir, entry.name);
   }
+  if (fallback) return fallback;
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
     if (entry.name === 'node_modules' || entry.name === '.git') continue;

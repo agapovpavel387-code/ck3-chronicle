@@ -49,8 +49,10 @@ javascript vanilla-js local-first offline rust-extractor game-tools history-visu
 ## Шаг 4. Release
 
 Тег `v0.1.0-alpha` → **Draft a new release** → выбрать тег → заголовок `0.1.0-alpha` →
-в описание вставить раздел из `RELEASE_NOTES.md` → приложить архив
-`chronicle-of-the-house-0.1.0-alpha.zip`.
+в описание вставить раздел из `RELEASE_NOTES.md` → приложить два архива:
+
+- `chronicle-of-the-house-0.1.0-alpha.zip` — приложение;
+- `ck3_history_extractor-2.4.7-ck3-1.20-win64.zip` — экстрактор с патчем 1.20 (без него импорт не работает, в git он не входит).
 
 ## Шаг 5. Проверка после публикации
 

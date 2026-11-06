@@ -109,9 +109,9 @@ You need: a `.ck3` save, the game, the extractor — and Python packages `ijson`
 The import page checks them and offers a one-click install; manually it is
 `python -m pip install -r requirements.txt`.
 
-**Getting the extractor.** It is a third-party project, [TCA166/CK3-history-extractor](https://github.com/TCA166/CK3-history-extractor) (MIT). No `.exe` is shipped here: build it from source or take the author's release.
+**Getting the extractor.** It is a third-party project, [TCA166/CK3-history-extractor](https://github.com/TCA166/CK3-history-extractor) (MIT). Nothing to build: [Releases](https://github.com/agapovpavel387-code/ck3-chronicle/releases) has a ready 1.20 build, `ck3_history_extractor-2.4.7-ck3-1.20-win64.zip`. Unpack it into the project's `vendor/` — that gives you `ck3_history_extractor.exe` and the `templates/` folder it looks for next to itself.
 
-The app looks for `ck3_history_extractor*.exe` next to the project, one and two folders up, and in `Documents/.../Crusader Kings III/mod`. If it is somewhere else, the import page has an **Extractor** field — paste the full path once. Version 2.4.7 does not understand the 1.20 save format, so apply `patches/extractor-1.20.patch` (see below).
+The app looks for `ck3_history_extractor*.exe` next to the project, one and two folders up, and in `Documents/.../Crusader Kings III/mod`. If it is somewhere else, the import page has an **Extractor** field — paste the full path once. Version 2.4.7 does not understand the 1.20 save format; the release build already carries `patches/extractor-1.20.patch`, and the section below is for building it yourself.
 
 Paths are passed as arguments or environment variables — there are no hard-coded drives in the scripts:
 
@@ -135,7 +135,7 @@ Without `--game` the world is still built, just without a map: the map needs `ma
 
 Text saves are read directly. Binary saves (autosaves, ironman) need tokens: `tools/tokens.ps1` launches the game, waits for `oos_dump` and picks up `tokens_1.tok`. Put the resulting `tokens_1.tok` next to the extractor (`vendor/` in the project or the folder with `ck3_history_extractor.exe`): the extractor looks there, in the working folder and in `%USERPROFILE%`.
 
-The extractor also needs a `templates/` folder next to the exe: it reads it relative to the working folder and panics with "Internal templates requested but not compiled in" without it. The unpacked build ships one; if you put the exe into `vendor/`, copy `templates/` there too.
+The extractor also needs a `templates/` folder next to the exe: it reads it relative to the working folder and panics with "Internal templates requested but not compiled in" without it. The release archive ships one next to the exe.
 
 ## Extractor and the 1.20 save format
 

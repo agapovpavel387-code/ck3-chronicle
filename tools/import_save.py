@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Import a Crusader Kings III save into the app.
 
 The save itself contains no map: CK3 keeps map geometry in the game folder
@@ -119,7 +119,26 @@ def dir_is_writable(path: Path) -> bool:
         return False
 
 
-def pick_work(preferred: Path) -> Path:
+def extractor_cwd(extractor: Path) -> Path:
+    """Рабочая папка экстрактора: там должен лежать ./templates.
+
+    Экстрактор читает шаблоны по относительному пути, поэтому ему нужна папка,
+    где рядом с exe лежит `templates/`. У сборок в vendor её часто нет —
+    тогда ищем выше по дереву и в самом проекте.
+    """
+    probes = [extractor.parent]
+    parent = extractor.parent
+    for _ in range(3):
+        parent = parent.parent
+        probes.append(parent)
+    probes.append(ROOT)
+    for probe in probes:
+        if (probe / "templates" / "homeTemplate.html").is_file():
+            return probe
+    return extractor.parent
+
+
+
     """Рабочая папка: сначала выбранная, потом запасные вне синхронизируемых мест."""
     candidates = [
         preferred,
@@ -192,6 +211,12 @@ def main() -> None:
     if str(work) != str(Path(args.work)):
         print(f"Рабочая папка: {work}")
 
+    # Экстрактор ищет шаблоны в ./templates относительно рабочей папки и без них
+    # падает («Internal templates requested but not compiled in»). Ищем, где они лежат.
+    exe_cwd = extractor_cwd(extractor)
+    if exe_cwd != extractor.parent:
+        print(f"Шаблоны экстрактора: {exe_cwd / 'templates'}")
+
     print(f"Save:      {save}")
     print(f"Game:      {game}")
     print(f"Extractor: {extractor}")
@@ -215,16 +240,16 @@ def main() -> None:
         "--dump", str(dump),
     ]
     try:
-        run(read_command, "Reading the save", cwd=extractor.parent)  # шаблоны лежат рядом с экстрактором
+        run(read_command, "Reading the save", cwd=exe_cwd)  # шаблоны лежат рядом с экстрактором
     except SystemExit:
-        # Отказано в записи (Desktop, OneDrive, защита Windows) — переезжаем в запасную папку.
-        print("\nЭкстрактор не смог записать дамп. Пробую другую рабочую папку.")
+        # Ошибка экстрактора (нет шаблонов, отказ в записи, битый сейв) — пробуем запасную папку.
+        print("\nЭкстрактор завершился с ошибкой. Пробую другую рабочую папку.")
         work = pick_work(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import")
         dump = work / "gamestate.json"
         read_command[read_command.index("-o") + 1] = str(work)
         read_command[read_command.index("--dump") + 1] = str(dump)
         try:
-            run(read_command, "Reading the save (repeat)", cwd=extractor.parent)
+            run(read_command, "Reading the save (repeat)", cwd=exe_cwd)
         except SystemExit:
             pass
     if not dump.exists() or dump.stat().st_size < 1_000_000:
@@ -234,7 +259,7 @@ def main() -> None:
         read_command[read_command.index("-o") + 1] = str(extractor.parent)
         read_command[read_command.index("--dump") + 1] = str(beside)
         try:
-            run(read_command, "Reading the save (beside the extractor)", cwd=extractor.parent)
+            run(read_command, "Reading the save (beside the extractor)", cwd=exe_cwd)
             if beside.exists():
                 shutil.move(str(beside), str(dump))
         except SystemExit:

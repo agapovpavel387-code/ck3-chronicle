@@ -119,13 +119,8 @@ def dir_is_writable(path: Path) -> bool:
         return False
 
 
-def extractor_cwd(extractor: Path) -> Path:
-    """Рабочая папка экстрактора: там должен лежать ./templates.
-
-    Экстрактор читает шаблоны по относительному пути, поэтому ему нужна папка,
-    где рядом с exe лежит `templates/`. У сборок в vendor её часто нет —
-    тогда ищем выше по дереву и в самом проекте.
-    """
+def find_templates(extractor: Path) -> Path | None:
+    """Папка templates/ для экстрактора: рядом с exe, выше по дереву или в проекте."""
     probes = [extractor.parent]
     parent = extractor.parent
     for _ in range(3):
@@ -134,11 +129,37 @@ def extractor_cwd(extractor: Path) -> Path:
     probes.append(ROOT)
     for probe in probes:
         if (probe / "templates" / "homeTemplate.html").is_file():
-            return probe
-    return extractor.parent
+            return probe / "templates"
+    return None
 
 
+def stage_extractor(extractor: Path, work: Path) -> Path:
+    """Копия экстрактора в рабочей папке — из Documents он писать не может.
 
+    Экстрактор пишет рядом с собой и падает с «Отказано в доступе» (os error 5),
+    если его папка лежит в Documents: Windows не пускает туда посторонние
+    программы. Поэтому запускаем копию из рабочей папки, забрав tokens_1.tok
+    и templates/ — без них он тоже не работает.
+    """
+    stage = work / "extractor"
+    stage.mkdir(parents=True, exist_ok=True)
+    staged_exe = stage / extractor.name
+    if not staged_exe.exists() or staged_exe.stat().st_size != extractor.stat().st_size:
+        shutil.copy2(extractor, staged_exe)
+    tokens = stage / "tokens_1.tok"
+    for candidate in (extractor.parent / "tokens_1.tok", ROOT / "vendor" / "tokens_1.tok"):
+        if candidate.is_file():
+            if not tokens.exists() or tokens.stat().st_size != candidate.stat().st_size:
+                shutil.copy2(candidate, tokens)
+            break
+    if not (stage / "templates").exists():
+        templates = find_templates(extractor)
+        if templates:
+            shutil.copytree(templates, stage / "templates")
+    return stage
+
+
+def pick_work(preferred: Path) -> Path:
     """Рабочая папка: сначала выбранная, потом запасные вне синхронизируемых мест."""
     candidates = [
         preferred,
@@ -211,11 +232,10 @@ def main() -> None:
     if str(work) != str(Path(args.work)):
         print(f"Рабочая папка: {work}")
 
-    # Экстрактор ищет шаблоны в ./templates относительно рабочей папки и без них
-    # падает («Internal templates requested but not compiled in»). Ищем, где они лежат.
-    exe_cwd = extractor_cwd(extractor)
-    if exe_cwd != extractor.parent:
-        print(f"Шаблоны экстрактора: {exe_cwd / 'templates'}")
+    # Экстрактор читает ./templates и пишет рядом с собой: и то и другое проходит
+    # только когда он запущен из рабочей папки, а не из Documents.
+    exe_cwd = stage_extractor(extractor, work)
+    extractor = exe_cwd / extractor.name
 
     print(f"Save:      {save}")
     print(f"Game:      {game}")
@@ -274,14 +294,8 @@ def main() -> None:
     # 6. Build the world and its map.
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
-    build_command = [
+    build_args = [
         sys.executable, "tools/build_world.py",
-            "--dump", str(dump),
-            "-o", str(out_dir / "world.json"),
-            "--map", str(out_dir / "world-map.png"),
-        "--game", str(game),
-    ]
-    build_args = build_command + [
         "--dump", str(dump),
         "-o", str(out_dir / "world.json"),
         "--map", str(out_dir / "world-map.png"),

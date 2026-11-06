@@ -1,5 +1,20 @@
 # Изменения / Changelog
 
+## 0.1.1-alpha — 2026-11-06
+
+Импорт своего сохранения наконец работает у всех, а не только на машине разработчика. / Importing your own save now works for everyone, not just on the developer's machine.
+
+### Импорт / Import
+
+- Экстрактор запускается из рабочей папки: Windows не даёт писать в `Documents`, из-за чего любой импорт падал с «Отказано в доступе» на шаге дампа. `import_save.py` теперь копирует `exe`, `tokens_1.tok` и `templates/` в рабочую папку и работает оттуда.
+- Запасная попытка больше не передаёт относительный путь в `-o`.
+
+### Публикация / Publishing
+
+- Готовая сборка экстрактора с патчем 1.20 — в Releases: `ck3_history_extractor-2.4.7-ck3-1.20-win64.zip` (exe, `templates/`, лицензия TCA). Собирать из исходников больше не нужно.
+- README, заметки к выпуску и памятка по публикации ведут в Releases.
+- `vendor/` и `*.exe` не попадают в git.
+
 ## 0.1.0-alpha — 2026-11-05
 
 Первая альфа для Crusader Kings III 1.20.x. / First alpha for Crusader Kings III 1.20.x.

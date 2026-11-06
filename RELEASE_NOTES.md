@@ -1,4 +1,4 @@
-# Хроника рода 0.1.0-alpha — заметки к выпуску
+# Хроника рода 0.1.1-alpha — заметки к выпуску
 
 **Что это.** Локальное приложение, которое читает сохранение Crusader Kings III и показывает мир глазами одной семьи: что до рода дошло — своим знанием, вестями и молвой. Ничего не отправляется в сеть, аккаунт не нужен.
 
@@ -44,7 +44,7 @@
 
 ---
 
-# Chronicle of the House 0.1.0-alpha — release notes
+# Chronicle of the House 0.1.1-alpha — release notes
 
 **What it is.** A local app that reads a Crusader Kings III save and shows the world through one family's eyes: what actually reached the house — its own records, messages, and hearsay. Nothing is sent over the network, no account needed.
 

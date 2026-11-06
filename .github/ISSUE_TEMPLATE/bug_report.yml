@@ -26,7 +26,7 @@ body:
     attributes:
       label: Версия / Version
       description: Из файла VERSION или с экрана загрузки / from VERSION or the loading screen
-      placeholder: 0.1.0-alpha
+      placeholder: 0.1.1-alpha
     validations:
       required: true
   - type: textarea

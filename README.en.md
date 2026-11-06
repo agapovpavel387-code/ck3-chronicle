@@ -135,6 +135,8 @@ Without `--game` the world is still built, just without a map: the map needs `ma
 
 Text saves are read directly. Binary saves (autosaves, ironman) need tokens: `tools/tokens.ps1` launches the game, waits for `oos_dump` and picks up `tokens_1.tok`. Put the resulting `tokens_1.tok` next to the extractor (`vendor/` in the project or the folder with `ck3_history_extractor.exe`): the extractor looks there, in the working folder and in `%USERPROFILE%`.
 
+The extractor also needs a `templates/` folder next to the exe: it reads it relative to the working folder and panics with "Internal templates requested but not compiled in" without it. The unpacked build ships one; if you put the exe into `vendor/`, copy `templates/` there too.
+
 ## Extractor and the 1.20 save format
 
 The patch fixes what 2.4.7 could not handle:

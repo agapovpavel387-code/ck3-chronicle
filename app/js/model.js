@@ -128,6 +128,31 @@ function relationTo(person) {
 }
 /* ---------- мир ---------- */
 
+// Кому подчиняется человек. `null` — независимый или сведений нет.
+function liegeOf(id) {
+  if (!id) return null;
+  const rec = ix.names.get(Number(id));
+  if (!rec) return null;
+  const liege = rec.liege;
+  // В сейве 227 человек числятся вассалами сами себе — это не подчинение.
+  if (!liege || liege === id) return null;
+  const lrec = ix.names.get(Number(liege));
+  if (!lrec || !lrec.name) return null;
+  const top = lrec.liege && lrec.liege !== liege ? ix.names.get(Number(lrec.liege)) : null;
+  return { name: lrec.name, top: top && top.name ? top.name : '' };
+}
+
+// «Х» или «Х, тот — Y»: глубже двух не лезем, дальше это уже не про род.
+function liegeTail(id, withTop = true) {
+  const liege = liegeOf(id);
+  if (!liege) return '';
+  return withTop && liege.top ? `${liege.name}, тот — ${liege.top}` : liege.name;
+}
+
+function knownPerson(id) {
+  return Boolean(id && ix.names.get(Number(id)));
+}
+
 function knownLine(r) {
   if (r.ring <= 1) {
     return [

@@ -134,7 +134,15 @@ function dossierText() {
   const holders = people
     .filter((p) => p.kin && p.titles && p.titles.length)
     .sort((a, b) => b.titles.length - a.titles.length);
-  for (const person of holders.slice(0, 25)) out.push(`- ${nameOf(person)}: ${heldLine(person)}`);
+  for (const person of holders.slice(0, 25)) {
+    // Феодальный статус: кому служит держатель. В данных бывает «вассал сам себе».
+    const liegeId = person.liege && person.liege !== person.id ? person.liege : null;
+    const liegeRec = liegeId ? ix.names.get(Number(liegeId)) : null;
+    const status = liegeRec && liegeRec.name
+      ? ` — ${T('dossier.vassalOf', 'вассал')} ${liegeRec.name}`
+      : ` — ${T('dossier.independent', 'независимый')}`;
+    out.push(`- ${nameOf(person)}: ${heldLine(person)}${status}`);
+  }
   const camps = people.filter((p) => p.kin && p.camp);
   if (camps.length) {
     out.push('');

@@ -74,9 +74,14 @@ function entryText(e) {
       if (!p) {
         return `${e.title || 'Власть'}: сменился государь${why}.`;
       }
-      if (e.grade === 0) return `${year} год. ${e.title || 'Власть'}: власть принял${p && p.female ? 'а' : ''} ${nameOf(p)}${why}.`;
-      if (e.grade === 1) return [`${e.title}: сменился государь — ${nameOf(p)}${why}.`, `${e.title}: власть перешла к ${nameOf(p)}${why}.`][v % 2];
-      if (e.grade === 2) return `${e.title}: новый государь, ${nameOf(p)}${why}.`;
+      // Кому подчинялся принявший власть — только там, где имя известно роду.
+      const tail = e.grade <= 2 ? liegeTail(e.who) : '';
+      const feudal = tail
+        ? ` ${T('chronicle.vassalOf', 'Вассал')} ${tail}.`
+        : (e.grade <= 2 && knownPerson(e.who) ? ` ${T('chronicle.independent', 'Независимый правитель')}.` : '');
+      if (e.grade === 0) return `${year} год. ${e.title || 'Власть'}: власть принял${p && p.female ? 'а' : ''} ${nameOf(p)}${why}.${feudal}`;
+      if (e.grade === 1) return [`${e.title}: сменился государь — ${nameOf(p)}${why}.${feudal}`, `${e.title}: власть перешла к ${nameOf(p)}${why}.${feudal}`][v % 2];
+      if (e.grade === 2) return `${e.title}: новый государь, ${nameOf(p)}${why}.${feudal}`;
       return [`${e.title}: сменился государь.`, `В ${e.title} — новый государь; кто он, не сказывали.`, `${e.title}: власть перешла к другому.`][v % 3];
     }
     case 'war': {
@@ -117,12 +122,18 @@ function entryText(e) {
       ][v % 3];
     }
     case 'title_loss': {
-      const taker = q && q.id !== p?.id ? nameOf(q) : '';
+      // Новый держатель часто не из рода: имя берём из общего справочника.
+      const takerRec = e.who2 ? ix.names.get(Number(e.who2)) : null;
+      const taker = (takerRec && takerRec.name) || (q && q.id !== p?.id ? nameOf(q) : '');
       const what = e.title ? `титула «${e.title}»` : 'титула';
       const why = e.why ? ` — ${e.why}` : '';
       if (e.grade <= 1) {
         const lost = `${nameOf(p)} лишил${p && p.female ? 'ась' : 'ся'} ${what}${why}.`;
-        return taker ? `${lost} Теперь он у ${taker}.` : lost;
+        const takerTail = e.who2 ? liegeTail(e.who2, false) : '';
+        const to = taker
+          ? ` ${T('chronicle.titleWentTo', 'Титул отошёл к')} ${taker}${takerTail ? `, ${T('chronicle.vassalOfLower', 'вассалу')} ${takerTail}` : ''}.`
+          : '';
+        return `${lost}${to}`;
       }
       if (e.title) {
         return taker

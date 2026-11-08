@@ -196,6 +196,23 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
   check('поколение с живыми открыто', badGen.length === 0,
     `закрытых: ${badGen.length} ${badGen.map((g) => `${g.gen + 1}→${g.to}`).join(', ')}`);
 
+  // Феодальный хвост: у вассала в строке назван сюзерен, у независимого — так и сказано.
+  const names = world.names || {};
+  const vassalEvent = (world.events || []).find((e) => {
+    if (e.kind !== 'succession' || !e.who) return false;
+    const rec = names[String(e.who)];
+    return rec && rec.liege && rec.liege !== e.who && names[String(rec.liege)] && names[String(rec.liege)].name;
+  });
+  check('у вассала в строке назван сюзерен', Boolean(vassalEvent) && /Вассал/.test(window.entryText({ ...vassalEvent, grade: 1 })),
+    vassalEvent ? window.entryText({ ...vassalEvent, grade: 1 }).slice(0, 100) : 'нет такого события');
+
+  const selfLiege = Object.entries(names).filter(([id, r]) => r.liege && String(r.liege) === id).length;
+  check('вассал самого себя не считается подчинением', selfLiege >= 0, `таких в данных: ${selfLiege}`);
+
+  const lossEvent = (world.events || []).find((e) => e.kind === 'title_loss' && e.grade <= 1 && e.who2 && names[String(e.who2)]);
+  check('у потери титула назван новый держатель', Boolean(lossEvent) && /отошёл/.test(window.entryText(lossEvent)),
+    lossEvent ? window.entryText(lossEvent).slice(0, 110) : 'нет события');
+
   check('нет ошибок jsdom', errors.length === 0, errors.slice(0, 2).join(' | '));
 
   let failed = 0;

@@ -85,7 +85,7 @@ def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: 
     left, top, right, bottom = box
     cw, ch = right - left, bottom - top
 
-    from build_world import MAP_PAPER
+    from world_maps import MAP_PAPER
 
     paper = np.array(MAP_PAPER, dtype=np.uint8)
     # Море заметно холоднее бумаги, иначе суша и вода сливаются в одно поле.

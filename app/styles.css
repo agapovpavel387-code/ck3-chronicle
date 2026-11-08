@@ -223,6 +223,7 @@ code { font-family: var(--font-mono); font-size: .85em; font-variant-numeric: ta
 .entry--2 { border-left-color: transparent; color: var(--ink-soft); }
 .entry--3 { border-left-color: transparent; color: var(--muted); }
 .entry--4 { border-left-color: transparent; color: var(--muted); font-style: italic; }
+.entry__cause { display: inline-block; font-family: var(--font-mono); font-size: .625rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--rule); border-radius: 2px; padding: 0 5px; margin-right: 7px; vertical-align: 1px; }
 .entry small { display: block; font-size: .75rem; color: var(--muted); font-family: var(--font-mono); margin-top: 2px; }
 .truth { display: block; font-size: .8125rem; color: var(--muted); font-style: italic; margin-top: 3px; }
 
@@ -283,9 +284,35 @@ code { font-family: var(--font-mono); font-size: .85em; font-variant-numeric: ta
 .tree .node.is-selected .node-sub { fill: color-mix(in srgb, var(--surface-2) 75%, transparent); }
 
 /* ---------- карта ---------- */
+.filter-note { margin: -8px 0 18px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.filter-note .btn { padding: 4px 10px; }
 .map-figure { margin: 0 0 26px; border: 1px solid var(--rule); background: var(--surface-2); }
 .map-figure img { display: block; width: 100%; height: auto; }
-.map-wrap { position: relative; }
+.map-wrap { position: relative; overflow: hidden; touch-action: none; }
+/* Зум: карта ходит под курсором, но не вылезает за рамку. */
+.map-wrap img { transform-origin: 0 0; transition: transform .14s ease-out; }
+.map-wrap.is-zoomed { cursor: grab; }
+.map-wrap.is-zoomed:active { cursor: grabbing; }
+.map-zoom {
+  position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px;
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  border: 1px solid var(--rule); padding: 4px; border-radius: 2px;
+}
+.map-zoom button {
+  font: inherit; line-height: 1; padding: 6px 9px; min-width: 30px;
+  background: transparent; border: 1px solid var(--rule); color: inherit; cursor: pointer;
+}
+.map-zoom button:hover { border-color: var(--ink); }
+.map-zoom button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* Линии тиров: у общей иконки легенды есть рамка, здесь она заменяется чертой. */
+.map-legend i.tier-line { display: inline-block; width: 26px; height: 0; margin-right: 6px; vertical-align: middle; border: 0; }
+.map-legend i.tier-line--empire { border-top: 4px solid #201e19; }
+.map-legend i.tier-line--kingdom { border-top: 2px solid #58503e; }
+.map-legend i.tier-line--duchy { border-top: 1px solid #968b74; }
+.map-legend i.tier-line--county { border-top: 1px solid #d0b27a; }
+@media (prefers-reduced-motion: reduce) {
+  .map-wrap img { transition: none; }
+}
 .map-tip {
   position: absolute; transform: translateY(-105%);
   background: var(--ink); color: var(--surface-2);

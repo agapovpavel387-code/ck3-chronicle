@@ -70,9 +70,14 @@ function buildDoc() {
     const first = group.years[0].year;
     const last = group.years[group.years.length - 1].year;
     const ruler = group.era?.ruler ? `Глава рода — ${esc(group.era.ruler)}.` : '';
+    const causes = Object.entries(stats.causes || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([family, n]) => `${CAUSE_RU[family] || family}${n > 1 ? ` ${n}` : ''}`)
+      .join(', ');
     const totals = [
       stats.death ? `смертей — ${stats.death}` : '',
-      stats.war ? `войн — ${stats.war}` : '',
+      stats.war ? `войн — ${stats.war}${causes ? ` (${causes})` : ''}` : '',
       stats.marriage ? `браков — ${stats.marriage}` : '',
       stats.birth ? `рождений — ${stats.birth}` : '',
       stats.succession ? `смен власти — ${stats.succession}` : '',

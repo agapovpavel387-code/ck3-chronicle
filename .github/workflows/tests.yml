@@ -14,6 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+      # Проверки титулов и истории написаны на Python.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Install test dependency
         run: npm ci --no-audit --no-fund
       - name: Run checks

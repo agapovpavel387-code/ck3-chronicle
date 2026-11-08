@@ -102,6 +102,8 @@ function afterRender() {
   if (form) {
     form.addEventListener('submit', (ev) => { ev.preventDefault(); readForm(); saveSettings(); buildDoc(); });
     form.addEventListener('change', () => { readForm(); saveSettings(); buildDoc(); });
+    const clearTitle = el('clearTitleFilter');
+    if (clearTitle) clearTitle.addEventListener('click', () => { state.titleFilter = null; render(); });
     el('copyDoc').addEventListener('click', () => copy(docText()).then((ok) => toast(ok ? 'Скопировано' : 'Не удалось скопировать')));
     el('downloadDoc').addEventListener('click', () => download('hronika-roda.md', docText()));
     buildDoc();

@@ -54,12 +54,16 @@ function viewWorld() {
   const houseLayer = political?.houses || null;
   const familyLayer = political?.family || null;
   const layer = state.mapLayer === 'family' && familyLayer ? 'family' : 'houses';
-  const lens = state.lens === 'political' && (houseLayer || familyLayer) ? 'political' : 'radius';
+  const titlesLayer = state.world.mapIndex?.titles || null;
+  const lens = state.lens === 'titles' && titlesLayer
+    ? 'titles'
+    : state.lens === 'political' && (houseLayer || familyLayer) ? 'political' : 'radius';
 
-  const lensButtons = houseLayer || familyLayer
+  const lensButtons = houseLayer || familyLayer || titlesLayer
     ? `<div class="lens-switch" role="tablist" aria-label="Линза карты">
            <button class="lens${lens === 'radius' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'radius'}" data-lens="radius">Радиус знания</button>
-           <button class="lens${lens === 'political' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'political'}" data-lens="political">Политическая</button>
+           <button class="lens${lens === 'political' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'political'}" data-lens="political"${houseLayer || familyLayer ? '' : ' hidden'}>Политическая</button>
+           ${titlesLayer ? `<button class="lens${lens === 'titles' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'titles'}" data-lens="titles">Титулы</button>` : ''}
          </div>`
     : '';
 
@@ -99,25 +103,42 @@ function viewWorld() {
     ? `<figcaption class="map-legend map-legend--political"><span>${T('world.noMap', 'Для этого мира политическая карта не собрана.')}</span></figcaption>`
     : '';
 
-  const currentFile = lens === 'political'
-    ? (layer === 'family' ? familyLayer?.file : houseLayer?.file) || meta.map
-    : meta.map;
+  const titlesLegend = titlesLayer
+    ? `<figcaption class="map-legend map-legend--titles"${lens === 'titles' ? '' : ' hidden'}>
+         <span><i class="tier-line tier-line--empire"></i>${T('world.tierEmpire', 'империя')}</span>
+         <span><i class="tier-line tier-line--kingdom"></i>${T('world.tierKingdom', 'королевство')}</span>
+         <span><i class="tier-line tier-line--duchy"></i>${T('world.tierDuchy', 'герцогство')}</span>
+         <span><i class="tier-line tier-line--county"></i>${T('world.tierCounty', 'графство')}</span>
+         <span class="muted">${T('world.titlesNote', 'все титулы, кроме баронств; щёлкните, чтобы увидеть цепочку')}</span>
+       </figcaption>`
+    : '';
+
+  const currentFile = lens === 'titles'
+    ? (titlesLayer?.map || meta.map)
+    : lens === 'political'
+      ? (layer === 'family' ? familyLayer?.file : houseLayer?.file) || meta.map
+      : meta.map;
 
   const map = meta.map
     ? `<figure class="map-figure" id="mapFigure">
            ${lensButtons}${layerButtons}
-           <div class="map-wrap">
-             <img id="worldMap" src="_data/${esc(lens === 'political' ? currentFile : meta.map)}" alt="Карта мира" loading="lazy" data-lens="${lens}" data-layer="${layer}">
+           <div class="map-wrap" id="mapWrap">
+             <img id="worldMap" src="_data/${esc(currentFile)}" alt="Карта мира" loading="lazy" data-lens="${lens}" data-layer="${layer}" tabindex="0">
              <div class="map-tip" id="mapTip" hidden></div>
+             <div class="map-zoom" role="group" aria-label="Масштаб карты">
+               <button type="button" data-zoom="in" aria-label="Приблизить">+</button>
+               <button type="button" data-zoom="out" aria-label="Отдалить">−</button>
+               <button type="button" data-zoom="reset" aria-label="Сбросить масштаб">Сброс</button>
+             </div>
            </div>
-           <figcaption class="map-legend"${lens === 'political' ? ' hidden' : ''}>
+           <figcaption class="map-legend"${lens !== 'radius' ? ' hidden' : ''}>
              <span><i style="background:#191713"></i>${T('world.legendOwn', 'своё')}</span>
              <span><i style="background:#4a4335"></i>${T('world.legendNear', 'ближний')}</span>
              <span><i style="background:#8a7f68"></i>${T('world.legendMiddle', 'средний')}</span>
              <span><i style="background:#bdb29a"></i>${T('world.legendFar', 'дальний')}</span>
              <span><i style="background:#e0d8c6"></i>${T('world.legendHearsay', 'молва')}</span>
            </figcaption>
-           ${houseLegend}${familyLegend}${noLandNote}${emptyPolitical}
+           ${houseLegend}${familyLegend}${titlesLegend}${noLandNote}${emptyPolitical}
            <div class="map-detail" id="mapDetail" hidden></div>
          </figure>`
     : '';
@@ -139,12 +160,31 @@ const ringLabel = (index) => [
   T('world.ring3', 'дальний круг'),
   T('world.ring4', 'молва'),
 ][index] || T('world.ring4', 'молва');
+let titlesCard = null;
+let titlesLoading = null;
+// Карта титулов грузится один раз и только когда её открыли.
+function loadTitlesCard() {
+  if (titlesCard) return Promise.resolve(titlesCard);
+  if (!titlesLoading) {
+    titlesLoading = fetch('_data/titles-map.json')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { titlesCard = data; return data; })
+      .catch(() => null);
+  }
+  return titlesLoading;
+}
+
+const MAP_TIER_RU = { c: 'графство', d: 'герцогство', k: 'королевство', e: 'империя' };
+const tierOfKey = (key) => (key ? (key[0] === 'c' ? 'c' : key[0] === 'd' ? 'd' : key[0] === 'k' ? 'k' : 'e') : null);
+
 function setupMap() {
   const mapIndex = state.world.mapIndex || state.world.meta.mapIndex;
   if (!mapIndex) return;
   const img = el('worldMap');
   const tip = el('mapTip');
   const detail = el('mapDetail');
+  const wrap = el('mapWrap');
+  if (!img || !tip || !detail) return;
   const pick = new Image();
   const buffer = document.createElement('canvas');
   let ctx = null;
@@ -156,25 +196,180 @@ function setupMap() {
     if (ctx) ctx.drawImage(pick, 0, 0);
   });
   const political = state.world.mapIndex?.political;
+  const titles = state.world.mapIndex?.titles;
   const layer = state.mapLayer === 'family' && political?.family ? 'family' : 'houses';
-  const pickFile = state.lens === 'political'
-    ? (political?.[layer]?.index || political?.houses?.index || mapIndex.file)
-    : mapIndex.file;
+  const lens = state.lens === 'titles' && titles
+    ? 'titles'
+    : state.lens === 'political' && political
+      ? 'political'
+      : 'radius';
+  const pickFile = lens === 'titles'
+    ? (titles.index || titles.file)
+    : lens === 'political'
+      ? (political?.[layer]?.index || political?.houses?.index || mapIndex.file)
+      : mapIndex.file;
   pick.src = '_data/' + pickFile;
 
-  const realmAt = (ev) => {
-    if (!ctx) return null;
+  if (lens === 'titles') loadTitlesCard();
+
+  // --- масштаб ---
+  const wrapEl = wrap || img.parentElement;
+  let zoom = { s: 1, x: 0, y: 0 };
+  let dragged = false;
+  const applyZoom = () => {
+    img.style.transform = `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.s})`;
+    wrapEl.classList.toggle('is-zoomed', zoom.s > 1.01);
+  };
+  const clampZoom = () => {
+    zoom.s = Math.min(4, Math.max(1, zoom.s));
+    if (zoom.s <= 1.001) { zoom.x = 0; zoom.y = 0; }
+    if (wrapEl) {
+      const rect = wrapEl.getBoundingClientRect();
+      const maxX = Math.max(0, (rect.width * (zoom.s - 1)) / 2);
+      const maxY = Math.max(0, (rect.height * (zoom.s - 1)) / 2);
+      zoom.x = Math.min(maxX, Math.max(-maxX, zoom.x));
+      zoom.y = Math.min(maxY, Math.max(-maxY, zoom.y));
+    }
+    applyZoom();
+  };
+  const setZoom = (next, cx, cy) => {
+    const prev = zoom.s;
+    zoom.s = next;
+    if (cx != null && wrapEl) {
+      const rect = wrapEl.getBoundingClientRect();
+      const dx = cx - rect.left - rect.width / 2;
+      const dy = cy - rect.top - rect.height / 2;
+      const ratio = zoom.s / prev - 1;
+      zoom.x -= dx * ratio;
+      zoom.y -= dy * ratio;
+    }
+    clampZoom();
+  };
+
+  if (wrapEl) {
+    wrapEl.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      setZoom(zoom.s * Math.exp(-ev.deltaY * 0.0015), ev.clientX, ev.clientY);
+    }, { passive: false });
+
+    let panning = false;
+    let startX = 0;
+    let startY = 0;
+    let originX = 0;
+    let originY = 0;
+    wrapEl.addEventListener('pointerdown', (ev) => {
+      if (zoom.s <= 1.001) return;
+      panning = true;
+      dragged = false;
+      startX = ev.clientX; startY = ev.clientY;
+      originX = zoom.x; originY = zoom.y;
+      wrapEl.setPointerCapture?.(ev.pointerId);
+    });
+    wrapEl.addEventListener('pointermove', (ev) => {
+      if (!panning) return;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      if (Math.abs(dx) + Math.abs(dy) > 5) dragged = true;
+      zoom.x = originX + dx;
+      zoom.y = originY + dy;
+      clampZoom();
+    });
+    const stopPan = () => { panning = false; };
+    wrapEl.addEventListener('pointerup', stopPan);
+    wrapEl.addEventListener('pointercancel', stopPan);
+    wrapEl.addEventListener('pointerleave', stopPan);
+  }
+
+  for (const btn of document.querySelectorAll('[data-zoom]')) {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.zoom === 'in') setZoom(zoom.s * 1.4);
+      else if (btn.dataset.zoom === 'out') setZoom(zoom.s / 1.4);
+      else { zoom = { s: 1, x: 0, y: 0 }; applyZoom(); }
+    });
+  }
+
+  img.addEventListener('keydown', (ev) => {
+    if (ev.key === '+' || ev.key === '=') { setZoom(zoom.s * 1.4); ev.preventDefault(); }
+    else if (ev.key === '-' || ev.key === '_') { setZoom(zoom.s / 1.4); ev.preventDefault(); }
+    else if (ev.key === '0' || ev.key === 'Home') { zoom = { s: 1, x: 0, y: 0 }; applyZoom(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowLeft') { zoom.x += 40; clampZoom(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowRight') { zoom.x -= 40; clampZoom(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowUp') { zoom.y += 40; clampZoom(); ev.preventDefault(); }
+    else if (ev.key === 'ArrowDown') { zoom.y -= 40; clampZoom(); ev.preventDefault(); }
+  });
+
+  const indexAt = (ev) => {
+    if (!ctx) return 0;
     const rect = img.getBoundingClientRect();
-    if (!rect.width) return null;
+    if (!rect.width) return 0;
     const x = Math.floor(((ev.clientX - rect.left) / rect.width) * buffer.width);
     const y = Math.floor(((ev.clientY - rect.top) / rect.height) * buffer.height);
-    if (x < 0 || y < 0 || x >= buffer.width || y >= buffer.height) return null;
+    if (x < 0 || y < 0 || x >= buffer.width || y >= buffer.height) return 0;
     const d = ctx.getImageData(x, y, 1, 1).data;
-    const index = (d[0] << 16) | (d[1] << 8) | d[2];
-    return mapIndex.realms[String(index)] || null;
+    return (d[0] << 16) | (d[1] << 8) | d[2];
+  };
+
+  const realmAt = (ev) => {
+    const index = indexAt(ev);
+    return index ? mapIndex.realms[String(index)] || null : null;
+  };
+
+  // Цепочка титулов: графство → герцогство → королевство → империя.
+  const titleAt = async (ev) => {
+    const index = indexAt(ev);
+    if (!index) return null;
+    const card = await loadTitlesCard();
+    if (!card || !card.counties) return null;
+    const key = card.counties[index - 1];
+    if (!key) return null;
+    return {
+      key,
+      name: card.names?.[key] || key,
+      chain: (card.chain?.[index - 1] || []).map((k) => ({ key: k, name: card.names?.[k] || k })),
+      owner: card.owners?.[key] ?? null,
+    };
+  };
+
+  const titleCard = (title) => {
+    const owner = title.owner ? ix.people.get(title.owner) : null;
+    const ownerName = owner ? nameOf(owner) : (ix.names.get(title.owner) || '');
+    const chain = title.chain.length
+      ? title.chain.map((t) => `${MAP_TIER_RU[tierOfKey(t.key)] || 'титул'} — ${esc(t.name)}`).join(' · ')
+      : 'старших титулов нет: вольное графство';
+    detail.hidden = false;
+    detail.innerHTML = `<b>${esc(title.name)}</b> <span class="small muted">${T('world.titleCounty', 'графство')}</span>
+        <p class="small">${chain}</p>
+        <p class="small muted">${ownerName ? `Государь — ${esc(ownerName)}${owner && owner.house ? `, дом ${esc(owner.house)}` : ''}.` : 'Держатель неизвестен.'}</p>
+        <p class="small"><a href="#chronicle" data-title-link="${esc(title.key)}">Смотреть хронику по этому титулу</a></p>`;
+    const link = detail.querySelector('[data-title-link]');
+    if (link) {
+      link.addEventListener('click', (ev2) => {
+        ev2.preventDefault();
+        state.titleFilter = title.key;
+        window.location.hash = '#chronicle';
+      });
+    }
   };
 
   img.addEventListener('mousemove', (ev) => {
+    if (dragged) { tip.hidden = true; return; }
+    if (lens === 'titles') {
+      if (!ctx) return;
+      const index = indexAt(ev);
+      if (!index) { tip.hidden = true; img.style.cursor = 'default'; return; }
+      const card = titlesCard;
+      const key = card?.counties?.[index - 1];
+      if (!key) { tip.hidden = true; img.style.cursor = 'default'; return; }
+      img.style.cursor = 'pointer';
+      const rect = img.getBoundingClientRect();
+      const chain = (card.chain?.[index - 1] || []).map((k) => card.names?.[k] || k);
+      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || 'вольное графство')}</span>`;
+      tip.hidden = false;
+      const left = Math.max(8, Math.min(ev.clientX - rect.left, rect.width - 190));
+      tip.style.left = left + 'px';
+      tip.style.top = Math.max(8, ev.clientY - rect.top - 12) + 'px';
+      return;
+    }
     const realm = realmAt(ev);
     if (!realm) { tip.hidden = true; img.style.cursor = 'default'; return; }
     img.style.cursor = 'pointer';
@@ -189,7 +384,14 @@ function setupMap() {
 
   img.addEventListener('mouseleave', () => { tip.hidden = true; });
 
-  img.addEventListener('click', (ev) => {
+  img.addEventListener('click', async (ev) => {
+    if (dragged) { dragged = false; return; }
+    if (lens === 'titles') {
+      const title = await titleAt(ev);
+      if (!title) { detail.hidden = true; return; }
+      titleCard(title);
+      return;
+    }
     const realm = realmAt(ev);
     if (!realm) { detail.hidden = true; return; }
     const ring = ringLabel(realm.ring) || 'молва';

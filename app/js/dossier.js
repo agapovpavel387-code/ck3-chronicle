@@ -9,6 +9,13 @@
 
 const TIER_RU = { Empire: 'империя', Kingdom: 'королевство', Duchy: 'герцогство', County: 'графство', Other: 'владение' };
 const yr = (value) => String(value ?? '').replace(/^0+/, '') || '—';
+// Владения с годом: «Сичуань с 887» — из истории титула (build_world.py, tenures).
+function heldLine(p) {
+  if (p && p.tenures && p.tenures.length) {
+    return p.tenures.map(([name, year]) => (year ? `${name} с ${year}` : name)).join(', ');
+  }
+  return p && p.titles && p.titles.length ? p.titles.join(', ') : '';
+}
 function mapWords() {
   const realms = state.world.realms || [];
   const grid = state.world.mapGrid;
@@ -75,7 +82,7 @@ function dossierText() {
   if (owners.length) {
     out.push('## Кто держал титулы');
     for (const p of owners.sort((a, b) => (yearOf(a.birth) || 0) - (yearOf(b.birth) || 0))) {
-      const what = p.titles && p.titles.length ? p.titles.join(', ') : 'титул в прошлом';
+      const what = heldLine(p) || 'титул в прошлом';
       out.push(`  - ${nameOf(p)} (${y0(p.birth) || '?'}—${p.death ? y0(p.death) : 'жив'}): ${what}`);
     }
     out.push('');
@@ -127,7 +134,7 @@ function dossierText() {
   const holders = people
     .filter((p) => p.kin && p.titles && p.titles.length)
     .sort((a, b) => b.titles.length - a.titles.length);
-  for (const person of holders.slice(0, 25)) out.push(`- ${nameOf(person)}: ${person.titles.join(', ')}`);
+  for (const person of holders.slice(0, 25)) out.push(`- ${nameOf(person)}: ${heldLine(person)}`);
   const camps = people.filter((p) => p.kin && p.camp);
   if (camps.length) {
     out.push('');
@@ -161,7 +168,7 @@ function dossierText() {
     }
     out.push(`- ${head.filter(Boolean).join('; ')}`);
     if (r.rulers && r.rulers.length > 1) {
-      out.push(`    смена государей: ${r.rulers.map((x) => `${x.name} ${yr(x.from)}—${yr(x.to)}${x.faith ? ` (${x.faith})` : ''}`).join('; ')}`);
+      out.push(`    смена государей: ${r.rulers.map((x) => `${x.name || 'имени не сохранилось'} ${yr(x.from)}—${yr(x.to)}${x.faith ? ` (${x.faith})` : ''}`).join('; ')}`);
     }
   }
   out.push('');

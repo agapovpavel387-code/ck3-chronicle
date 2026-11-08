@@ -37,7 +37,7 @@ const saveSettings = () => { try { localStorage.setItem(STORE, JSON.stringify(st
 /* ---------- индексы ---------- */
 
 const ix = { people: new Map(), names: new Map(), byYear: new Map(), years: [], totals: new Map() };
-const KIND_WEIGHT = { death: 0, succession: 1, war: 2, battle: 3, war_win: 4, war_loss: 5, birth: 6, marriage: 7, title_loss: 8, prison: 9, note: 12 };
+const KIND_WEIGHT = { death: 0, succession: 1, title_loss: 2, war: 3, battle: 4, war_win: 5, war_loss: 6, birth: 7, marriage: 9, prison: 10, note: 12 };
 function index(world) {
   ix.people.clear(); ix.names.clear(); ix.byYear.clear(); ix.totals.clear(); ix.years = [];
   for (const p of world.people || []) ix.people.set(p.id, p);

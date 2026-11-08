@@ -13,6 +13,15 @@ const KIND_RU = {
   prison_free: 'воля', battle: 'битва', title_loss: 'утрата', journey: 'путь', ruler: 'правление',
   alliance: 'союз', romance: 'любовь', kin_death: 'утрата близкого', note: 'запись',
 };
+// За что воевали — по семейству повода из сейва (build_world.py, cb_family).
+const CAUSE_RU = {
+  holy: 'за веру',
+  tribute: 'за дань',
+  mandate: 'за верховенство',
+  faction: 'за вольности',
+  conquest: 'за землю',
+  claim: 'за титул',
+};
 function entryText(e) {
   const p = who(e.who);
   const q = who(e.who2);
@@ -24,9 +33,10 @@ function entryText(e) {
   let body = (() => {
     switch (e.kind) {
     case 'death': {
+      const cause = e.cause ? ` Причина — ${e.cause}.` : '';
       if (e.grade === 0) {
         const dead = `${nameOf(p)}${age ? `, ${yearsRu(age)} от роду` : ''}`;
-        const tail = `${e.title ? ` Держал «${e.title}».` : ''}${traitsPhrase(p)}`;
+        const tail = `${e.title ? ` Держал «${e.title}».` : ''}${cause}${traitsPhrase(p)}`;
         return [
           `В лето ${year}-е преставил${p && p.female ? 'ась' : 'ся'} ${dead}.${tail}`,
           `На ${year}-й год не стало ${dead}.${tail}`,
@@ -36,11 +46,11 @@ function entryText(e) {
       if (e.grade === 1) {
         const who = `${nameOf(p)}${e.title ? `, ${e.title}` : ''}`;
         return pickVariant(e, [
-          `В том же году ${died(p)} ${who}.`,
-          `${cap(died(p))} ${who}.`,
-          `Не стало ${who}.`,
-          `В тот год не стало ${who}.`,
-          `Скончал${p && p.female ? 'ась' : 'ся'} ${who}.`,
+          `В том же году ${died(p)} ${who}.${cause}`,
+          `${cap(died(p))} ${who}.${cause}`,
+          `Не стало ${who}.${cause}`,
+          `В тот год не стало ${who}.${cause}`,
+          `Скончал${p && p.female ? 'ась' : 'ся'} ${who}.${cause}`,
         ]);
       }
       if (e.grade === 2) return `${cap(died(p))} ${nameOf(p)} (${place}).`;
@@ -51,23 +61,73 @@ function entryText(e) {
       ][v % 3];
     }
     case 'succession': {
-      if (e.grade === 0) return `${year} год. ${e.title || 'Власть'}: власть принял${p && p.female ? 'а' : ''} ${nameOf(p)}.`;
-      if (e.grade === 1) return [`${e.title}: сменился государь — ${nameOf(p)}.`, `${e.title}: власть перешла к ${nameOf(p)}.`][v % 2];
-      if (e.grade === 2) return `${e.title}: новый государь, ${nameOf(p)}.`;
+      // Причина известна из истории титула или памяти: `why` приходит готовым.
+      const why = e.why ? ` — ${e.why}` : '';
+      if (e.action === 'created' && e.grade <= 1) {
+        return p
+          ? `В ${year} году учреждён титул «${e.title}» — его держателем стал ${nameOf(p)}.`
+          : `В ${year} году учреждён титул «${e.title}».`;
+      }
+      if (e.action === 'destroyed' && e.grade <= 1) {
+        return `В ${year} году титул «${e.title}» прекратил существование.`;
+      }
+      if (!p) {
+        return `${e.title || 'Власть'}: сменился государь${why}.`;
+      }
+      if (e.grade === 0) return `${year} год. ${e.title || 'Власть'}: власть принял${p && p.female ? 'а' : ''} ${nameOf(p)}${why}.`;
+      if (e.grade === 1) return [`${e.title}: сменился государь — ${nameOf(p)}${why}.`, `${e.title}: власть перешла к ${nameOf(p)}${why}.`][v % 2];
+      if (e.grade === 2) return `${e.title}: новый государь, ${nameOf(p)}${why}.`;
       return [`${e.title}: сменился государь.`, `В ${e.title} — новый государь; кто он, не сказывали.`, `${e.title}: власть перешла к другому.`][v % 3];
     }
     case 'war': {
-      if (e.grade <= 1) return [`Началась ${e.type || 'война'}.${q ? ` Противник — ${nameOf(q)}.` : ''}`, `Пошли войной${q ? ` на ${nameOf(q)}` : ''}: ${e.type || 'война'}.`][v % 2];
-      if (e.grade === 2) return `Слышали о войне${q ? ` с ${nameOf(q)}` : ''}.`;
-      return [`На границах неспокойно.`, `Сказывали о войне в дальних землях.`, `Из-за моря дошло: где-то воюют.`][v % 3];
+      // Повод — из сейва: метка перед строкой, причина в тексте, исход по истории титула.
+      const cause = CAUSE_RU[e.family] || '';
+      const foe = q ? nameOf(q) : (e.who2Name || '');
+      const lead = p ? nameOf(p) : (e.whoName || '');
+      const goal = e.title ? ` Цель — ${e.title}.` : '';
+      const outcome = e.outcome === 'attacker' && e.title
+        ? ` Добились своего: «${e.title}» отошёл к ним.`
+        : e.outcome === 'other' && e.outcomeHolder
+          ? ` «${e.title}» достался ${e.outcomeHolder}.`
+          : '';
+      if (e.grade <= 2) {
+        if (e.role === 'defend') {
+          return pickVariant(e, [
+            foe
+              ? `${foe} пошёл на нас войной${cause ? ` — ${cause}` : ''}.${goal}${outcome}`
+              : `На нас пошли войной${cause ? ` — ${cause}` : ''}.${goal}${outcome}`,
+            `На нас пошли войной${foe ? ` — ${foe}` : ''}${cause ? (foe ? `, ${cause}` : ` — ${cause}`) : ''}.${goal}${outcome}`,
+          ]);
+        }
+        if (e.role === 'third' && lead && foe) {
+          return pickVariant(e, [
+            `${lead} пошёл войной на ${foe}${cause ? ` — ${cause}` : ''}.${goal}${outcome}`,
+            `${foe}: на него пошёл войной ${lead}${cause ? ` — ${cause}` : ''}.${goal}${outcome}`,
+          ]);
+        }
+        return pickVariant(e, [
+          `Пошли войной${foe ? ` на ${foe}` : ''}${cause ? ` ${cause}` : ''}.${goal}${outcome}`,
+          `Объявили войну${foe ? ` против ${foe}` : ''}${cause ? ` — ${cause}` : ''}.${goal}${outcome}`,
+        ]);
+      }
+      return [
+        `На границах неспокойно${cause ? ` — ${cause}` : ''}.`,
+        `Сказывали о войне${e.type ? `: ${e.type}` : ''}.`,
+        `Из-за моря дошло: где-то воюют${cause ? ` ${cause}` : ''}.`,
+      ][v % 3];
     }
     case 'title_loss': {
       const taker = q && q.id !== p?.id ? nameOf(q) : '';
-      const what = e.title ? `«${e.title}»` : 'титул';
+      const what = e.title ? `титула «${e.title}»` : 'титула';
+      const why = e.why ? ` — ${e.why}` : '';
       if (e.grade <= 1) {
+        const lost = `${nameOf(p)} лишил${p && p.female ? 'ась' : 'ся'} ${what}${why}.`;
+        return taker ? `${lost} Теперь он у ${taker}.` : lost;
+      }
+      if (e.title) {
         return taker
-          ? `${nameOf(p)} потерял${p && p.female ? 'а' : ''} ${what}: он отошёл к ${taker}.`
-          : `${nameOf(p)} потерял${p && p.female ? 'а' : ''} ${what}.`;
+          ? `${e.title}: прежний владетель лишился титула${why}; им стал ${taker}.`
+          : `${e.title}: прежний владетель лишился титула${why}.`;
       }
       return `В ${place} сменился владетель${taker ? ` — им стал ${taker}` : ''}.`;
     }
@@ -99,12 +159,14 @@ function entryText(e) {
       return e.grade <= 1 ? `${nameOf(p)} ${p && p.female ? 'вышла' : 'вышел'} на волю.` : 'Тамошнего государя выпустили.';
     case 'battle':
       return e.grade <= 1 ? `${nameOf(p)} и ${nameOf(q)} сошлись в бою.` : 'На дальних полях было сражение.';
-    case 'title_loss':
-      return e.grade <= 1 ? `${nameOf(p)} ${p && p.female ? 'потеряла' : 'потерял'} титул${e.title ? ` «${e.title}»` : ''}.` : 'Тамошний государь лишился титула.';
     case 'journey':
       return e.grade <= 1 ? `${nameOf(p)} ${p && p.female ? 'вернулась' : 'вернулся'} из паломничества.` : 'Тамошний государь ходил на богомолье.';
     case 'ruler':
-      if (e.grade <= 1) return `${nameOf(p)} ${p && p.female ? 'приняла' : 'принял'} власть.`;
+      if (e.grade <= 1) {
+        const why = e.why ? ` — ${e.why}` : '';
+        const over = e.title ? ` над «${e.title}»` : '';
+        return `${nameOf(p)} ${p && p.female ? 'приняла' : 'принял'} власть${over}${why}.`;
+      }
     // Если край назван — называем его: строки перестают быть близнецами.
     const where = e.title || e.realm;
     if (where && !String(where).startsWith('держава ')) {
@@ -163,9 +225,15 @@ function truthLine(e) {
 function viewChronicle() {
   const s = state.settings;
   const years = ix.years;
+  const titleFilter = state.titleFilter || null;
+  const filterName = titleFilter
+    ? ((state.world.events || []).find((e) => e.titleKey === titleFilter)?.title || titleFilter)
+    : null;
   return `
       <div class="page-head"><h1>${T('chronicle.title', 'Хроника')}</h1>
         <p>Год за годом — только то, что дошло до рода. Чем дальше двор, тем короче запись.</p></div>
+      ${filterName ? `<p class="filter-note">${T('chronicle.onlyTitle', 'Показан только титул')}: <b>${esc(filterName)}</b>
+         <button class="btn btn--ghost" type="button" id="clearTitleFilter">${T('chronicle.clearTitle', 'Показать всё')}</button></p>` : ''}
       <div class="chronicle">
         <form class="controls" id="chronicleForm">
           <div class="field-row">
@@ -240,10 +308,13 @@ function collect() {
   const warStart = new Map();     // участник -> год начала войны
   const feudStart = new Map();    // пара -> год начала распри
 
+  const titleFilter = state.titleFilter || null;
   for (const year of ix.years) {
     if (year < s.from || year > s.to) continue;
     const all = ix.byYear.get(year) || [];
     const relevant = all.filter((e) => {
+      // С карты пришёл титул — показываем только его события.
+      if (titleFilter && e.titleKey !== titleFilter) return false;
       if (e.kind === 'death' && !s.deaths) return false;
       if (e.kind === 'succession' && !s.successions) return false;
       if ((e.kind === 'war' || e.kind === 'war_win' || e.kind === 'war_loss' || e.kind === 'battle') && !s.wars) return false;
@@ -331,6 +402,9 @@ function collect() {
 
     const weightOf = (e) => {
       if (e.kind === 'note' && /убий/i.test(e.type || '')) return 0;
+      // Власть — главное в летописи рода: потеря титула не должна ждать в очереди
+      // за бытовыми записями, когда в году много событий.
+      if (e.kind === 'succession' || e.kind === 'title_loss') return 0;
       const people2 = [e.who, e.who2].filter(Boolean).map((id) => ix.people.get(id));
       const landed = people2.some((p) => p && (p.landed || p.held));
       const notable = people2.some((p) => p && p.notable);
@@ -408,7 +482,10 @@ function prologue(chapters, s) {
 const LAYER_RU = { kin: 'В роду', court: 'При дворе и рядом' };
 function renderEntry(e) {
   const truth = state.settings.truth ? `<span class="truth">на самом деле: ${esc(truthLine(e))}</span>` : '';
-  return `<p class="entry entry--${e.grade}">${esc(entryText(e))}${truth}</p>`;
+  const cause = (e.kind === 'war' || e.kind === 'war_win' || e.kind === 'war_loss') && e.type
+    ? `<span class="entry__cause">${esc(e.type)}</span>`
+    : '';
+  return `<p class="entry entry--${e.grade}">${cause}${esc(entryText(e))}${truth}</p>`;
 }
 function renderYear(chapter) {
   const { year, layers, missed } = chapter;
@@ -420,6 +497,18 @@ function renderYear(chapter) {
     .slice(0, 4)
     .map(([k, n]) => `${KIND_RU[k] || k}${n > 1 ? ' ' + n : ''}`)
     .join(' · ');
+
+  // За что воевали в этом году — по семействам поводов из сейва.
+  const causes = new Map();
+  for (const e of all) {
+    if (e.kind !== 'war' || !e.family || e.family === 'other') continue;
+    causes.set(e.family, (causes.get(e.family) || 0) + 1);
+  }
+  const causeLine = causes.size
+    ? `<span class="year__causes"> · за что воевали: ${[...causes.entries()]
+        .map(([family, n]) => `${CAUSE_RU[family] || family}${n > 1 ? ` ${n}` : ''}`)
+        .join(', ')}</span>`
+    : '';
 
   const block = (key) => {
     const list = layers[key];
@@ -449,16 +538,19 @@ function renderYear(chapter) {
   return `<section class="year">
       <div class="year__num">${year}</div>
       <div class="year__body">
-        <p class="year__summary">${esc(summary)}${honesty}</p>
+        <p class="year__summary">${esc(summary)}${causeLine}${honesty}</p>
         ${block('kin')}${block('court')}${far}
       </div>
     </section>`;
 }
 function chapterStats(years) {
-  const counts = { death: 0, war: 0, marriage: 0, birth: 0, succession: 0 };
+  const counts = { death: 0, war: 0, marriage: 0, birth: 0, succession: 0, causes: {} };
   for (const chapter of years) {
     for (const e of [...chapter.layers.kin, ...chapter.layers.court]) {
       if (e.kind in counts) counts[e.kind] += 1;
+      if (e.kind === 'war' && e.family && CAUSE_RU[e.family]) {
+        counts.causes[e.family] = (counts.causes[e.family] || 0) + 1;
+      }
     }
   }
   return counts;
@@ -476,7 +568,10 @@ function chronicleMarkdown() {
       lastEra = era;
     }
     out.push(`## ${chapter.year}`, '');
-    for (const e of [...chapter.layers.kin, ...chapter.layers.court]) out.push(entryText(e), '');
+    for (const e of [...chapter.layers.kin, ...chapter.layers.court]) {
+      const cause = e.kind === 'war' && e.type ? `[${e.type}] ` : '';
+      out.push(cause + entryText(e), '');
+    }
     const far = chapter.far;
     if (far && (far.wars || far.deaths || far.successions)) {
       out.push(`Издали: ${[far.wars ? `войн — ${far.wars}` : '', far.deaths ? `смертей — ${far.deaths}` : '', far.successions ? `смен власти — ${far.successions}` : ''].filter(Boolean).join(', ')}.`, '');

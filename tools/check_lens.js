@@ -69,52 +69,20 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
   window.dispatchEvent(new window.HashChangeEvent('hashchange'));
   await wait(600);
 
-  const political = world.mapIndex?.political;
-  const hasHouses = Boolean(political?.houses);
-  const hasFamily = Boolean(political?.family);
-
-  const buttons = [...doc.querySelectorAll('.lens[data-lens]')];
-  check('переключатель линз есть', buttons.length === 3, `кнопок: ${buttons.length}`);
-
   const titles = world.mapIndex?.titles;
-  check('карта титулов собрана', Boolean(titles?.map), titles?.map || 'нет');
+  const buttons = [...doc.querySelectorAll('.lens[data-lens]')];
+  check('переключатель линз есть', buttons.length === 2, `кнопок: ${buttons.length}`);
+  check('вторая линза — власть', buttons.some((b) => b.dataset.lens === 'power'), buttons.map((b) => b.dataset.lens).join(', '));
+  check('карта власти собрана', Boolean(titles?.map), titles?.map || 'нет');
 
   const img = doc.getElementById('worldMap');
-  check('по умолчанию радиус знания', !(img.getAttribute('src') || '').includes('political'), img.getAttribute('src'));
-
-  check('карта домов собрана', hasHouses, political?.houses?.file || 'нет');
-  if (hasHouses) {
-    click(buttons.find((b) => b.dataset.lens === 'political'));
-    await wait(400);
-    const img2 = doc.getElementById('worldMap');
-    check('политическая линза открылась', (img2.getAttribute('src') || '').includes('political-houses'), img2.getAttribute('src'));
-
-    const legend = doc.querySelector('.map-legend--political');
-    check('легенда домов видна', Boolean(legend) && legend.textContent.trim().length > 10, legend?.textContent.trim().slice(0, 60) || 'нет');
-    const firstHouse = political.houses.houses[0]?.house;
-    check('в легенде имена домов', Boolean(firstHouse) && (legend.textContent || '').includes(firstHouse), firstHouse || 'нет');
-
-    check('у карты домов своя карта индексов', (political.houses.index || '').includes('political-houses-ids'), political.houses.index);
-  }
-
-  if (hasFamily) {
-    const layer = [...doc.querySelectorAll('.lens[data-layer]')];
-    check('переключатель слоёв есть', layer.length === 2, `кнопок слоёв: ${layer.length}`);
-    click(layer.find((b) => b.dataset.layer === 'family'));
-    await wait(400);
-    const img3 = doc.getElementById('worldMap');
-    check('слой земель рода открылся', (img3.getAttribute('src') || '').includes('political.png'), img3.getAttribute('src'));
-    const groups = doc.querySelectorAll('.lens-house');
-    check('в легенде дома с правителями', groups.length > 0, `групп: ${groups.length}`);
-    check('у слоя земель своя карта индексов', (political.family.index || '').includes('political-ids'), political.family.index);
-  }
-
+  check('по умолчанию радиус знания', !(img.getAttribute('src') || '').includes('titles'), img.getAttribute('src'));
   // Линза титулов: своя карта, свой индекс, зум и цепочка по клику.
   if (titles) {
-    click(buttons.find((b) => b.dataset.lens === 'titles'));
+    click(buttons.find((b) => b.dataset.lens === 'power'));
     await wait(400);
     const imgT = doc.getElementById('worldMap');
-    check('линза титулов открылась', (imgT.getAttribute('src') || '').includes('titles'), imgT.getAttribute('src'));
+    check('линза власти открылась', (imgT.getAttribute('src') || '').includes('titles'), imgT.getAttribute('src'));
     const titlesIndex = titles.index || titles.file || '';
     check('у карты титулов своя карта индексов', titlesIndex.includes('titles-ids'), titlesIndex);
     check('карта и данные одной сборки', titles.counties === titleCard.counties.length,

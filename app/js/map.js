@@ -64,26 +64,19 @@ function viewWorld() {
   const political = state.world.mapIndex?.political || null;
   const houseLayer = political?.houses || null;
   const familyLayer = political?.family || null;
-  const layer = state.mapLayer === 'family' && familyLayer ? 'family' : 'houses';
+  const layer = 'houses';
   const titlesLayer = state.world.mapIndex?.titles || null;
-  const lens = state.lens === 'titles' && titlesLayer
-    ? 'titles'
-    : state.lens === 'political' && (houseLayer || familyLayer) ? 'political' : 'radius';
+  // Одна карта власти: заливка по держателю, границы по тирам.
+  const lens = state.lens === 'power' && titlesLayer ? 'power' : 'radius';
 
-  const lensButtons = houseLayer || familyLayer || titlesLayer
+  const lensButtons = titlesLayer
     ? `<div class="lens-switch" role="tablist" aria-label="${T('world.lensAria', 'Линза карты')}">
            <button class="lens${lens === 'radius' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'radius'}" data-lens="radius">${T('world.lens.radius', 'Радиус знания')}</button>
-           <button class="lens${lens === 'political' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'political'}" data-lens="political"${houseLayer || familyLayer ? '' : ' hidden'}>${T('world.lens.political', 'Политическая')}</button>
-           ${titlesLayer ? `<button class="lens${lens === 'titles' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'titles'}" data-lens="titles">${T('world.lensTitles', 'Титулы')}</button>` : ''}
+           <button class="lens${lens === 'power' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'power'}" data-lens="power">${T('world.lensPower', 'Власть')}</button>
          </div>`
     : '';
 
-  const layerButtons = lens === 'political' && familyLayer
-    ? `<div class="lens-switch lens-switch--layer" role="tablist" aria-label="${T('world.layerAria', 'Слой политической карты')}">
-           <button class="lens lens--small${layer === 'houses' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${layer === 'houses'}" data-layer="houses">${T('world.layer.houses', 'По домам')}</button>
-           <button class="lens lens--small${layer === 'family' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${layer === 'family'}" data-layer="family">${T('world.layer.family', 'Земли рода')}</button>
-         </div>`
-    : '';
+  const layerButtons = '';
 
   const ROLE_RU = { player: T('world.rolePlayer', 'ваш дом'), senior: T('world.roleSenior', 'старший дом'), cadet: T('world.roleCadet', 'кадетская ветвь') };
   const groups = familyLayer?.groups || [];
@@ -115,7 +108,7 @@ function viewWorld() {
     : '';
 
   const titlesLegend = titlesLayer
-    ? `<figcaption class="map-legend map-legend--titles"${lens === 'titles' ? '' : ' hidden'}>
+    ? `<figcaption class="map-legend map-legend--titles"${lens === 'power' ? '' : ' hidden'}>
          <span><i class="tier-line tier-line--empire"></i>${T('world.tierEmpire', 'империя')}</span>
          <span><i class="tier-line tier-line--kingdom"></i>${T('world.tierKingdom', 'королевство')}</span>
          <span><i class="tier-line tier-line--duchy"></i>${T('world.tierDuchy', 'герцогство')}</span>
@@ -127,11 +120,7 @@ function viewWorld() {
 
   const build = meta.build || '';
   const v = build ? `?v=${build}` : '';
-  const currentFile = lens === 'titles'
-    ? (titlesLayer?.map || meta.map)
-    : lens === 'political'
-      ? (layer === 'family' ? familyLayer?.file : houseLayer?.file) || meta.map
-      : meta.map;
+  const currentFile = lens === 'power' ? (titlesLayer?.map || meta.map) : meta.map;
 
   const map = meta.map
     ? `<figure class="map-figure" id="mapFigure">
@@ -225,20 +214,14 @@ function setupMap() {
   const political = state.world.mapIndex?.political;
   const titles = state.world.mapIndex?.titles;
   const layer = state.mapLayer === 'family' && political?.family ? 'family' : 'houses';
-  const lens = state.lens === 'titles' && titles
-    ? 'titles'
-    : state.lens === 'political' && political
-      ? 'political'
-      : 'radius';
-  const pickFile = lens === 'titles'
+  const lens = state.lens === 'power' && titles ? 'power' : 'radius';
+  const pickFile = lens === 'power'
     ? (titles.index || titles.file)
-    : lens === 'political'
-      ? (political?.[layer]?.index || political?.houses?.index || mapIndex.file)
-      : mapIndex.file;
+    : mapIndex.file;
   const buildTag = state.world.meta?.build || '';
   pick.src = '_data/' + pickFile + (buildTag ? `?v=${buildTag}` : '');
 
-  if (lens === 'titles') loadTitlesCard();
+  if (lens === 'power') loadTitlesCard();
 
   // --- масштаб ---
   const wrapEl = wrap || img.parentElement;
@@ -435,7 +418,7 @@ function setupMap() {
 
   img.addEventListener('mousemove', (ev) => {
     if (dragged) { tip.hidden = true; return; }
-    if (lens === 'titles') {
+    if (lens === 'power') {
       if (!ctx) return;
       const index = indexAt(ev);
       if (!index) { tip.hidden = true; img.style.cursor = 'default'; return; }
@@ -477,7 +460,7 @@ function setupMap() {
 
   img.addEventListener('click', async (ev) => {
     if (dragged) { dragged = false; return; }
-    if (lens === 'titles') {
+    if (lens === 'power') {
       const title = await titleAt(ev);
       if (!title) { detail.hidden = true; return; }
       if (title.untitled) {

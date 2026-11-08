@@ -43,8 +43,6 @@ from world_maps import (  # noqa: E402
     province_pixels,
     realm_index_pixels,
     render_map,
-    render_political,
-    render_political_houses,
 )
 
 # Имена поводов из локализации игры — собирает tools/cb_names.py.
@@ -1826,19 +1824,8 @@ def main() -> None:
         for branch in branch_stats:
             role = "player" if branch.get("player") else "senior" if branch.get("senior") else "cadet"
             house_roles[branch.get("name") or ""] = role
-        political = render_political(
-            args.map, family_lands, realms, province_realm,
-            _provinces_png, *_provinces_png.size,
-            centroids, player_house_name, house_roles,
-        )
-        houses_map = render_political_houses(
-            args.map, realms, province_realm, _provinces_png,
-            *_provinces_png.size, house_roles,
-        )
-        payload["mapIndex"]["political"] = {
-            "houses": houses_map,
-            "family": political,
-        }
+        # Политическая карта и земли рода слились в одну «Власть»:
+        # заливка по держателю уже есть на карте титулов.
 
         # Карта титулов: все тиры, кроме баронства. Клик даёт графство,
         # а через de jure — герцогство, королевство и империю.
@@ -1847,8 +1834,33 @@ def main() -> None:
 
         title_card = build_title_card(titles, baronies)
         titles_out = args.map.with_name("world-map-titles.png")
+
+        # Заливка по владельцу: карта власти, а не просто титулов.
+        # Цвет дома — стабильный хеш имени, иначе между сборками он бы менялся.
+        accent = (160, 44, 28)
+        quiet_fill = (206, 198, 180)
+        family_names = {name for name in (player_house_name, *((houses.get(h) or {}).get("name") for h in dynasty_houses)) if name}
+
+        def house_fill(name: str | None) -> tuple[int, int, int]:
+            if not name:
+                return quiet_fill
+            if name in family_names:
+                return mix_with_paper(accent, 0.35)
+            digest = hashlib.md5(name.encode("utf-8")).digest()
+            # Тона домов приглушаем к бумаге: карта не должна спорить с летописью.
+            return mix_with_paper(HOUSE_TONES[digest[0] % len(HOUSE_TONES)], 0.62)
+
+        fills: dict[int, tuple[int, int, int]] = {}
+        owners = title_card.get("owners") or {}
+        for position, key in enumerate(title_card["counties"], start=1):
+            holder = owners.get(key)
+            # Красим по державе, а не по каждому дому: иначе карта рябая.
+            realm_id = top_liege(holder) if holder else None
+            realm = realms.get(realm_id or -1) or {}
+            fills[position] = house_fill(realm.get("house_name"))
+
         payload["mapIndex"]["titles"] = render_title_map(
-            titles_out, args.game, title_card, centroids, scale=2
+            titles_out, args.game, title_card, centroids, scale=2, fills=fills
         )
         # Справочник держателей для панели: имя, дом, сюзерен, верхний сюзерен.
         # Только те, кто нужен панели: держатели графств и их сюзерены.

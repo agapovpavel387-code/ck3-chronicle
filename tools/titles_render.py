@@ -116,7 +116,8 @@ def selftest() -> int:
     return 0
 
 
-def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: int = 2) -> dict:
+def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: int = 2,
+                     fills: dict[int, tuple[int, int, int]] | None = None) -> dict:
     """Рисует карту титулов и индексную карту. Возвращает описание для мира."""
     import numpy as np
     from PIL import Image
@@ -156,6 +157,11 @@ def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: 
     tone_map = np.zeros((len(counties) + 2, 3), dtype=np.uint8)
     for idx in range(1, len(counties) + 1):
         tone_map[idx] = tones[(idx - 1) % len(tones)]
+    # Если переданы цвета владельцев — заливаем ими: карта власти, а не просто титулов.
+    if fills:
+        for idx, color in fills.items():
+            if 1 <= idx < len(tone_map):
+                tone_map[idx] = color
 
     county_ink = np.array((208, 198, 178), dtype=np.uint8)
     duchy_ink = np.array((150, 139, 116), dtype=np.uint8)

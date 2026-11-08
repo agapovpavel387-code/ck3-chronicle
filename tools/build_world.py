@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 
 # Консоль Windows бывает в cp1251: без этого любой не-кириллический знак роняет сборку.
@@ -26,6 +27,17 @@ import ijson
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 CACHE = ROOT / "_cache"
+
+# Модель титулов живёт отдельно: три свидетеля, история с причиной и источником.
+sys.path.insert(0, str(HERE))
+from titles import attach_memory, dedupe, merge_history, normalize_action, reason_text, read_titles, reconcile  # noqa: E402
+
+# Имена поводов из локализации игры — собирает tools/cb_names.py.
+CB_NAMES: dict[str, dict[str, str]] = {}
+try:
+    CB_NAMES = json.loads((CACHE / "cb-names.json").read_text(encoding="utf-8"))
+except (OSError, ValueError):
+    CB_NAMES = {}
 
 # --- общие константы карт (одна палитра на все линзы) ---
 MAP_PAPER = (239, 233, 219)
@@ -109,6 +121,7 @@ RANK = {"Empire": 0, "Kingdom": 1, "Duchy": 2, "County": 3, "Barony": 4}
 GEO_BANDS = (600, 1350, 2250)
 
 # Тип воспоминания → вид события. Порядок важен: первое совпадение выигрывает.
+# Тип в сейве — уже локализованная строка, поэтому иголки нужны на обоих языках.
 MEMORY_KINDS = [
     ("рождение первенца", "birth"),
     ("родились близнецы", "birth"),
@@ -116,12 +129,14 @@ MEMORY_KINDS = [
     ("рождение ребенка", "birth"),
     ("в браке", "marriage"),
     ("стали друзьями", "friendship"),
+    ("стали побратимами", "friendship"),
     ("стали соперниками", "rivalry"),
+    ("стали заклятыми врагами", "rivalry"),
     ("лелеет обиду", "rivalry"),
     ("заключение в тюрьму", "prison"),
     ("освобождение из тюрьмы", "prison_free"),
     ("в заключении", "prison"),
-    ("Сражение в провинции", "battle"),
+    ("сражение в провинции", "battle"),
     ("победа в войне", "war_win"),
     ("поражение в войне", "war_loss"),
     ("оборонительная война", "war"),
@@ -132,26 +147,173 @@ MEMORY_KINDS = [
     ("меня сделали правителем", "ruler"),
     ("поддержан союзник", "alliance"),
     ("стали любовниками", "romance"),
+    ("стали родственными душами", "romance"),
     ("возникла влюбленность", "romance"),
-    ("стали побратимами", "friendship"),
     ("мертворожденное", "birth"),
     ("супруг умер", "kin_death"),
     ("смерть друга", "kin_death"),
     ("смерть соперника", "kin_death"),
+    # английская локализация сейва
+    ("firstborn", "birth"),
+    ("twins", "birth"),
+    ("stillborn", "birth"),
+    ("birth of a child", "birth"),
+    ("married", "marriage"),
+    ("became friends", "friendship"),
+    ("sworn brother", "friendship"),
+    ("became rivals", "rivalry"),
+    ("nemesis", "rivalry"),
+    ("bears a grudge", "rivalry"),
+    ("imprisoned", "prison"),
+    ("released from prison", "prison_free"),
+    ("battle in", "battle"),
+    ("war won", "war_win"),
+    ("victory in a war", "war_win"),
+    ("war lost", "war_loss"),
+    ("defeat in a war", "war_loss"),
+    ("defensive war", "war"),
+    ("offensive war", "war"),
+    ("lost an important title", "title_loss"),
+    ("pilgrimage", "journey"),
+    ("coronation", "journey"),
+    ("made me a ruler", "ruler"),
+    ("supported an ally", "alliance"),
+    ("became lovers", "romance"),
+    ("soulmate", "romance"),
+    ("spouse died", "kin_death"),
+    ("friend died", "kin_death"),
+    ("rival died", "kin_death"),
 ]
+
+# Служебный шум и то, что в летопись не годится.
+MEMORY_NOISE = (
+    "секс", "пытк", "изнасил", "онанизм", "детское образование", "экзамен",
+    "sex", "torture", "rape", "masturbat", "childhood education", "exam",
+)
 
 
 def memory_kind(text: str) -> str | None:
     low = text.lower()
     for needle, kind in MEMORY_KINDS:
-        if needle.lower() in low:
+        if needle in low:
             return kind
-    # Служебный шум и непереведённые ключи в хронику не пускаем.
-    if any(bad in low for bad in ("секс", "пытк", "изнасил", "онанизм", "детское образование", "экзамен")):
+    if any(bad in low for bad in MEMORY_NOISE):
         return None
-    if any("a" <= ch.lower() <= "z" for ch in text):
+    # Ключ локализации (`memory_birth_1`) — не текст: в летопись такое не пускаем.
+    if "_" in low and " " not in text.strip():
         return None
+    # Незнакомая фраза на любом языке: лучше запись без вида, чем потеря события.
     return "note" if " " in text.strip() else None
+
+
+# Повод войны: ключ сейва → как это звучит в летописи. Незнакомый повод не выдумываем.
+CB_RU = {
+    "claim_cb": "притязание на титул",
+    "individual_county_de_jure_cb": "возврат графства по праву",
+    "de_jure_cb_nomadic": "возврат де-юре владения",
+    "county_conquest_cb": "завоевание графства",
+    "duchy_conquest_cb": "завоевание герцогства",
+    "county_struggle_cb": "спор за графство",
+    "nomadic_conquest_cb": "кочевое завоевание",
+    "mpo_nomad_duchy_invasion_cb": "кочевое вторжение в герцогство",
+    "clan_invasion_war": "вторжение клана",
+    "fp3_turkic_invasion_cb": "тюркское вторжение",
+    "fp1_scandi_adventurer_conquest": "завоевание скандинава-искателя приключений",
+    "fp2_expel_interloper": "изгнание чужака",
+    "ep3_laamp_apprehend_adventurer_cb": "поимка искателя приключений",
+    "chinese_consolidation_cb": "объединение Китая",
+    "mandala_raze_capital_structure_cb": "разорение столицы мандалы",
+    "major_religious_war": "великая священная война",
+    "minor_religious_war": "священная война",
+    "make_tributary_cb": "принуждение к дани",
+    "liberty_faction_war": "война за вольности",
+    "claimant_faction_war": "война за права претендента",
+    "refused_liege_demand_war": "война против тирании",
+    "independence_war": "война за независимость",
+    "subjugation_war": "покорение",
+    "conquest_cb": "завоевание",
+    "holy_war_cb": "священная война",
+    "great_holy_war_cb": "великий крестовый поход",
+    "peasant_uprising": "крестьянский мятеж",
+    "populist_uprising": "мятеж простолюдинов",
+}
+
+
+def cb_label(key: str, lang: str = "russian") -> str:
+    """Повод человеческим языком: имя из игры, затем свой словарь, затем ключ."""
+    if not key:
+        return "война"
+    from_game = (CB_NAMES.get(key) or {}).get(lang)
+    if from_game and ":" not in from_game and len(from_game) <= 60:
+        # Имя из игры — с заглавной; в строке оно стоит серединой фразы.
+        return from_game[:1].lower() + from_game[1:] if from_game[:1].isupper() else from_game
+    label = CB_RU.get(key)
+    if label:
+        return label
+    plain = key.replace("_cb", "").replace("_war", "").replace("_", " ").strip()
+    return f"повод «{plain}»"
+
+
+# Категория повода из воспоминаний (`war_cb`): игра хранит её для всех войн, включая давно
+# закончившиеся. Тип повода там грубее, чем в `active_wars`, но причина названа.
+WAR_MEMORY_CB = {
+    "war_memory_cb_holy_war": ("священная война", "holy"),
+    "war_memory_cb_conquest": ("завоевание", "conquest"),
+    "war_memory_cb_ducal_conquest": ("завоевание герцогства", "conquest"),
+    "war_memory_cb_claim": ("притязание", "claim"),
+    "war_memory_cb_de_jure": ("возврат по праву", "claim"),
+    "war_memory_cb_border": ("пограничный спор", "claim"),
+    "war_memory_cb_tyranny": ("война против тирании", "faction"),
+    "war_memory_cb_liberty": ("война за вольности", "faction"),
+    "war_memory_cb_independence": ("война за независимость", "faction"),
+    "war_memory_cb_peasant": ("крестьянский мятеж", "faction"),
+    "war_memory_cb_populist": ("мятеж простолюдинов", "faction"),
+    "war_memory_cb_vassalization": ("подчинение вассала", "faction"),
+    "war_memory_cb_fracture": ("раскол", "faction"),
+    "war_memory_cb_government": ("спор о власти", "faction"),
+    "war_memory_cb_subjugation": ("покорение", "conquest"),
+    "war_memory_cb_invasion": ("вторжение", "conquest"),
+    "war_memory_cb_varangian": ("набег варягов", "conquest"),
+    "war_memory_cb_flower": ("набег за пленными", "conquest"),
+    "war_memory_cb_expel": ("изгнание", "other"),
+    "war_memory_cb_artifact": ("спор за реликвию", "other"),
+    "war_memory_cb_fallback": ("война", "other"),
+}
+
+
+def memory_role(type_text: str) -> str | None:
+    """Наступательная или оборонительная — по тексту воспоминания."""
+    low = (type_text or "").lower()
+    if "наступательн" in low or "offensive" in low:
+        return "attack"
+    if "оборонительн" in low or "defensive" in low:
+        return "defend"
+    return None
+
+
+def cb_family(key: str) -> str:
+    """Семейство повода — от него зависит, как строка звучит в летописи."""
+    low = (key or "").lower()
+    if "religious" in low or "holy_war" in low or low.startswith("crusade") or "crusading" in low:
+        return "holy"
+    if "tribut" in low:
+        return "tribute"
+    if any(word in low for word in ("consolidation", "reunification", "mandate", "hegemon", "mandala")):
+        return "mandate"
+    if "faction" in low or low in (
+        "liberty_faction_war",
+        "independence_war",
+        "peasant_war",
+        "populist_war",
+        "nomadic_war",
+        "refused_liege_demand_war",
+    ):
+        return "faction"
+    if any(word in low for word in ("conquest", "invasion", "subjugation", "seize")):
+        return "conquest"
+    if any(word in low for word in ("claim", "de_jure", "struggle")):
+        return "claim"
+    return "other"
 
 
 def year_of(date) -> int | None:
@@ -165,11 +327,71 @@ def year_of(date) -> int | None:
 
 
 def ref(value):
+    """Ссылка вида `{"id": 12}` или число → 12.
+
+    Игра пишет ключ по-разному: в участниках `id`, в переменных памяти `Id`
+    (`variables.landed_title`). Оба написания обязательны: без `Id` память
+    о титулах читается впустую.
+    """
     if isinstance(value, dict):
-        return value.get("id")
-    if isinstance(value, (int, float)):
+        ident = value.get("id")
+        if ident is None:
+            ident = value.get("Id")
+        return ident if isinstance(ident, int) and not isinstance(ident, bool) else (
+            int(ident) if isinstance(ident, float) else None
+        )
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
         return int(value)
     return None
+
+
+def house_title(name: str | None) -> str | None:
+    """Имя дома, если игра его действительно знает.
+
+    Непереведённый сейв пишет `House 12319`, русский — `дом 12319`.
+    Числовой дом в карточке хуже пустого места: там и так сказано «род не записан».
+    """
+    if not name:
+        return None
+    value = str(name).strip()
+    if re.fullmatch(r"(?i)(house|дом)\s+\d+", value):
+        return None
+    return value or None
+
+
+CAUSE_WORDS = {
+    "consumption": "чахотка",
+    "tuberculosis": "чахотка",
+    "smallpox": "оспа",
+    "measles": "корь",
+    "plague": "чума",
+    "leprosy": "проказа",
+    "dysentery": "дизентерия",
+    "typhus": "тиф",
+    "pneumonia": "воспаление лёгких",
+    "malaria": "малярия",
+    "cholera": "холера",
+    "cancer": "рак",
+}
+
+
+def clean_cause(text: str | None) -> str | None:
+    """Причина смерти без разметки игры.
+
+    Игра отдаёт её готовой строкой, но иногда с остатками локализации:
+    `[Select_CString(CHARACTER.IsFemale, 'умерла', 'умер' )] в плену` и
+    `от L чахотки`, где `L` — маркер конца цвета. В летопись такое не пускаем.
+    """
+    if not text:
+        return None
+    value = re.sub(r"\[[^\]]*\]", " ", str(text))
+    value = re.sub(r"\bL\s+", "", value)
+    # Английский сейв иногда оставляет английское слово в русской строке:
+    # «Consumption проникает в тело». Читаем по-русски, не выдумывая нового смысла.
+    for word, russian in CAUSE_WORDS.items():
+        value = re.sub(rf"\b{word}\b", russian, value, flags=re.IGNORECASE)
+    value = re.sub(r"\s+", " ", value).strip(" ,;:—-\t")
+    return value or None
 
 
 def variant(*parts) -> int:
@@ -200,7 +422,21 @@ def main() -> None:
         help="папка game игры Crusader Kings III (нужна для карты); можно задать переменной CK3_GAME",
     )
     parser.add_argument("--map", type=Path, default=None, help="куда сохранить карту мира")
+    parser.add_argument(
+        "--extra",
+        type=Path,
+        default=None,
+        help="save-extra.json из tools/save_reader.py: войны с поводами и история титулов из сейва",
+    )
     args = parser.parse_args()
+
+    extra: dict = {"wars": [], "titles": {}, "title_keys": {}, "date": None}
+    if args.extra:
+        if args.extra.exists():
+            extra.update(json.loads(args.extra.read_text(encoding="utf-8")))
+            print(f"сейв-дополнение: войн {len(extra.get('wars') or [])}, титулов с историей {len(extra.get('titles') or {})}", flush=True)
+        else:
+            print(f"сейв-дополнение не найдено: {args.extra} — собираю без войн и новой истории", flush=True)
 
     if not args.dump.exists():
         raise SystemExit(
@@ -239,27 +475,8 @@ def main() -> None:
     players = []
 
     print("читаю дамп…", flush=True)
-    with args.dump.open("rb") as handle:
-        for ident, tile in ijson.kvitems(handle, "titles", use_float=False):
-            capital = tile.get("capital") or {}
-            faith = tile.get("faith") or {}
-            culture = tile.get("culture") or {}
-            titles[int(ident)] = {
-                "id": int(ident),
-                "key": tile.get("key"),
-                "name": tile.get("name"),
-                "tier": tile.get("tier"),
-                "capital": capital.get("id"),
-                "faith": faith.get("name"),
-                "culture": culture.get("name"),
-                "holder": ref(tile.get("de_facto")),
-                "vassals": [ref(v) for v in (tile.get("de_jure_vassals") or []) if ref(v)],
-                "history": [
-                    [e[0], ref(e[1]), e[2]]
-                    for e in (tile.get("history") or [])
-                    if isinstance(e, list) and len(e) >= 3
-                ],
-            }
+    # Титулы: история, имя, тир, держатель — из общей модели.
+    titles = read_titles(args.dump)
     with args.dump.open("rb") as handle:
         current_date = next(ijson.items(handle, "current_date", use_float=False), None)
         if isinstance(current_date, str):
@@ -305,6 +522,9 @@ def main() -> None:
                 "piety": round(char.get("piety") or 0),
                 "kills": len(char.get("kills") or []),
                 "memories": [ref(m) for m in (char.get("memories") or []) if ref(m)],
+                # Игра пишет причину смерти уже локализованной строкой ("во сне", "в сражении"),
+                # но иногда с разметкой — чистим её здесь, а не в летописи.
+                "cause": clean_cause(char.get("reason")),
             }
     with args.dump.open("rb") as handle:
         for ident, mem in ijson.kvitems(handle, "memories", use_float=False):
@@ -312,18 +532,96 @@ def main() -> None:
             kind = memory_kind(mtype)
             if not kind:
                 continue
+            participants = mem.get("participants") or {}
+            variables = mem.get("variables") or {}
+            # Память о титуле: что за титул, почему сменился держатель и кто новый.
+            # Без этих трёх полей строка «потерян важный титул» идёт без имени.
+            landed = variables.get("landed_title")
+            reason = variables.get("reason")
+            if isinstance(reason, dict):
+                reason = reason.get("String") or reason.get("Id")
             memories.append(
                 {
                     "id": int(ident),
                     "date": mem.get("date"),
                     "type": mtype,
                     "kind": kind,
-                    "p": {role: ref(v) for role, v in (mem.get("participants") or {}).items() if ref(v)},
-                    "v": {k: ref(v["Id"]) for k, v in (mem.get("variables") or {}).items() if isinstance(v, dict) and "Id" in v},
+                    "p": {role: ref(v) for role, v in participants.items() if ref(v)},
+                    # Имена приходят уже готовыми — не теряем их при переходе на числа.
+                    "pNames": {
+                        role: (v.get("name") if isinstance(v, dict) else None)
+                        for role, v in participants.items()
+                    },
+                    "cbKind": (variables.get("war_cb") or {}).get("String")
+                    if isinstance(variables.get("war_cb"), dict)
+                    else None,
+                    "warTitle": ref(variables.get("war_title"))
+                    if isinstance(variables.get("war_title"), dict)
+                    else None,
+                    "titleId": ref(landed) if isinstance(landed, dict) else None,
+                    "titleReason": normalize_action(str(reason)) if reason is not None else None,
+                    "titleHolder": ref(participants.get("new_holder")) if isinstance(participants.get("new_holder"), dict) else None,
+                    "role": memory_role(mtype),
                 }
             )
 
+    # История титулов из сейва: в дампе она обрывается на дате старта партии.
+    title_stats = merge_history(titles, extra.get("titles") or {}, extra.get("names") or {})
+    if title_stats["rows"]:
+        print(
+            f"история титулов: склеено {title_stats['titles']} из сейва, "
+            f"записей {title_stats['rows']}, новых {title_stats['added']}",
+            flush=True,
+        )
+    repeated = dedupe(titles)
+    if repeated:
+        print(f"история титулов: повторов схлопнуто {repeated}", flush=True)
+
+    # Память знает причину, история — факт: сводим их в одну запись.
+    memory_owners = {
+        mem_id: cid
+        for cid, person in characters.items()
+        for mem_id in person.get("memories") or []
+    }
+    title_memories = [
+        {
+            "id": mem["id"],
+            "date": mem.get("date"),
+            "kind": "loss" if mem["kind"] == "title_loss" else "gain",
+            "title": mem.get("titleId"),
+            "reason": mem.get("titleReason"),
+            "newHolder": mem.get("titleHolder"),
+        }
+        for mem in memories
+        if mem.get("titleId") and mem["kind"] in ("title_loss", "ruler")
+    ]
+    if title_memories:
+        evidence = attach_memory(titles, title_memories, memory_owners)
+        print(
+            f"память о титулах: найдено пары {evidence['matched']}, "
+            f"добавлено {evidence['added']}, причин проставлено {evidence['reasoned']}, "
+            f"расхождений с историей {evidence['conflict']}",
+            flush=True,
+        )
+
+    # Смены без держателя и по две записи на дату: в сейве такое бывает буквально.
+    cleanup = reconcile(titles)
+    if cleanup["no_holder_merged"] or cleanup["no_holder_dropped"] or cleanup["same_day_dropped"]:
+        print(
+            f"история титулов: склеено без имени {cleanup['no_holder_merged']}, "
+            f"оставлено без имени {cleanup['no_holder_kept']}, "
+            f"схлопнуто дублей на дату {cleanup['same_day_dropped']}",
+            flush=True,
+        )
     print(f"титулов {len(titles)}, персонажей {len(characters)}, домов {len(houses)}, воспоминаний {len(memories)}", flush=True)
+
+    key_index = {tile.get("key"): tile["id"] for tile in titles.values() if tile.get("key")}
+    # id титула в сейве → имя в мире: id в дампе переиндексированы, склейка по key.
+    save_title_names: dict[str, str] = {}
+    for save_id, title_key in (extra.get("title_keys") or {}).items():
+        tile = titles.get(key_index.get(title_key, -1))
+        if tile and tile.get("name"):
+            save_title_names[str(save_id)] = tile["name"]
     date = current_date or "0894-01-01"
     now_year = year_of(date) or 894
 
@@ -333,7 +631,7 @@ def main() -> None:
         if not tile:
             return None
         best = None
-        for t_date, t_holder, _action in tile["history"]:
+        for t_date, t_holder, _action, _source in tile["history"]:
             if isinstance(t_date, str) and t_date <= when:
                 best = t_holder
         return best or tile["holder"]
@@ -544,11 +842,14 @@ def main() -> None:
         realm["by_sea"] = pol is None and geo is not None
         realm["ring"] = min([r for r in (pol, geo) if r is not None], default=4)
         realm["size"] = len(realm["counties"])
-        realm["name"] = realm.get("title") or f"держава {realm_id}"
+        # Без титула держава остаётся без имени: номер вместо названия в летопись не идёт.
+        # Называем по правителю — это то, что о ней известно.
+        ruler_name = characters.get(realm.get("ruler") or -1, {}).get("name")
+        realm["name"] = realm.get("title") or (f"владение {ruler_name}" if ruler_name else "дальняя держава")
 
     # Владения по годам и смена государей — материал для досье рассказчика.
     county_histories = [
-        (tile["id"], [(d, h) for d, h, _a in tile["history"] if isinstance(d, str)], tile["holder"])
+        (tile["id"], [(d, h) for d, h, _a, _s in tile["history"] if isinstance(d, str)], tile["holder"])
         for tile in titles.values()
         if tile["tier"] == "County"
     ]
@@ -610,7 +911,7 @@ def main() -> None:
         tile = titles.get(realm.get("titleId") or -1)
         if not tile:
             continue
-        entries = [(d, h) for d, h, _a in tile["history"] if isinstance(d, str)]
+        entries = [(d, h) for d, h, _a, _s in tile["history"] if isinstance(d, str)]
         rulers = []
         for index, (when, who) in enumerate(entries):
             end = entries[index + 1][0] if index + 1 < len(entries) else date
@@ -621,19 +922,34 @@ def main() -> None:
                 {
                     "from": when[:4],
                     "to": end[:4],
-                    "name": person.get("name"),
+                    # Имя бывает пустым (безымянный ребёнок или заглушка в дампе):
+                    # лучше честное «имени не сохранилось», чем пустая строка.
+                    "name": person.get("name") or None,
                     "faith": person.get("faith"),
                     "culture": person.get("culture"),
                 }
             )
         realm["rulers"] = rulers[-5:]
 
+    # Второй проход: у державы без титула имя появляется только теперь, когда известен правитель.
+    for _rid, realm in realms.items():
+        if (realm.get("name") or "") in ("дальняя держава",) or re.fullmatch(r"держава \d+", realm.get("name") or ""):
+            if realm.get("ruler"):
+                realm["name"] = f"владение {realm['ruler']}"
+
     def realm_name_of(cid: int | None) -> str | None:
-        """Название державы, к которой принадлежит человек — вместо «дальнего двора»."""
+        """Название державы, к которой принадлежит человек — вместо «дальнего двора».
+
+        Держава без титула зовётся «держава 55493»: это номер, а не имя.
+        В летопись номер не идёт — там будет «дальние земли».
+        """
         if not cid:
             return None
         realm_id = top_liege(cid)
-        return realms.get(realm_id, {}).get("name") if realm_id else None
+        name = realms.get(realm_id, {}).get("name") if realm_id else None
+        if not name or re.fullmatch(r"держава \d+", str(name)):
+            return None
+        return name
 
     # ------------------------------------------------------------- династия
     house_id = player.get("house")
@@ -696,10 +1012,35 @@ def main() -> None:
             key=lambda t: RANK.get(t["tier"], 9),
         )
 
+    def tenure_of(cid: int, tile: dict) -> str | None:
+        """С какого года держит титул — по истории, а не по догадке."""
+        since = None
+        for when, holder, _action, _source in tile["history"]:
+            if not isinstance(when, str):
+                continue
+            if holder == cid:
+                since = since or when
+            elif holder:
+                # Титул перешёл к другому — отсчёт начинается заново.
+                since = None
+        return since
+
+    def _tenures(cid: int, own: list[dict]) -> list[list]:
+        """Владения для досье: одно имя — одна строка, год может быть пустым."""
+        seen: dict[str, int | None] = {}
+        for tile in own[:6]:
+            name = tile["name"]
+            if name in seen:
+                continue
+            seen[name] = year_of(tenure_of(cid, tile))
+            if len(seen) >= 4:
+                break
+        return [[name, year] for name, year in seen.items()]
+
     # Кто когда-либо держал титул — по истории владений, а не только по текущему списку.
     ever_held: set[int] = set()
     for tile in titles.values():
-        for _d, h, _a in tile["history"]:
+        for _d, h, _a, _s in tile["history"]:
             if h:
                 ever_held.add(h)
         if tile.get("holder"):
@@ -756,7 +1097,14 @@ def main() -> None:
                 "kills": person["kills"],
                 "title": own[0]["name"] if own else None,
                 "tier": own[0]["tier"] if own else None,
-                "titles": list(dict.fromkeys(t["name"] for t in own))[:4],
+                # Мёртвый землёй не владеет: в дампе его титул остаётся, но в «Кто чем
+                # владеет» ему не место — он только «держал», и это видно по held.
+                "titles": [] if person.get("death") else list(dict.fromkeys(t["name"] for t in own))[:4],
+                # Владения с годом: «Сичуань с 887» — из истории титула, не из догадки.
+                # Год известен не у всех титулов: пустой год — титул всё равно показываем,
+                # иначе из «Кто чем владеет» пропадают целые владения. Одно имя — одна строка:
+                # графство и герцогство с одним названием не должны двоиться.
+                "tenures": [] if person.get("death") else _tenures(cid, own),
                 "ring": 0 if person["house"] in dynasty_houses or cid in spouses_of_members else person_ring(cid),
             }
         )
@@ -789,10 +1137,8 @@ def main() -> None:
     branches.sort(key=lambda b: (not b["main"], -b["members"]))
 
     # ------------------------------------------------------------- события
-    owners: dict[int, int] = {}
-    for cid, person in characters.items():
-        for mid in person["memories"]:
-            owners[mid] = cid
+    # Кому принадлежит воспоминание — уже собрано, когда сводили память о титулах.
+    owners = memory_owners
 
     def fade(grade: int, when: str | None, ring: int) -> int:
         if ring == 0:
@@ -829,6 +1175,7 @@ def main() -> None:
                 "tier": own[0]["tier"] if own else None,
                 "realm": realm_name_of(cid),
                 "kin": person["house"] in dynasty_houses,
+                "cause": person.get("cause"),
                 "v": variant(cid, death),
             }
         )
@@ -836,7 +1183,7 @@ def main() -> None:
     for tile in titles.values():
         if tile["tier"] not in ("Empire", "Kingdom", "Duchy", "County"):
             continue
-        for when, holder, action in tile["history"]:
+        for when, holder, action, source in tile["history"]:
             year = year_of(when)
             if not year or year < now_year - 150:
                 continue
@@ -856,17 +1203,78 @@ def main() -> None:
                     "grade": fade(ring, when, ring),
                     "who": holder,
                     "title": tile["name"],
+                    "titleKey": tile["key"],
                     "tier": tile["tier"],
-                    "action": action,
+                    "action": normalize_action(action),
+                    "why": reason_text(normalize_action(action), "ru"),
+                    "source": source,
                     "realm": realm_name_of(holder),
                     "kin": characters.get(holder or -1, {}).get("house") in dynasty_houses,
                     "v": variant(holder, when, tile["id"]),
                 }
             )
 
+    # Потеря титула: память знает и титул, и того, кому он отошёл.
+    # Раньше это событие шло без имени титула — теперь имя есть.
+    title_by_id = titles
+    seen_loss: set[tuple] = set()
+    for mem in title_memories:
+        if mem["kind"] != "loss":
+            continue
+        tile = title_by_id.get(mem["title"] or -1)
+        if not tile or tile["tier"] not in ("Empire", "Kingdom", "Duchy", "County"):
+            continue
+        owner = memory_owners.get(mem["id"])
+        if not owner:
+            continue
+        is_kin = characters.get(owner, {}).get("house") in dynasty_houses
+        if tile["tier"] == "County" and not is_kin:
+            continue
+        taker = mem.get("newHolder")
+        slot = (tile["id"], mem.get("date"), owner)
+        if slot in seen_loss:
+            continue
+        seen_loss.add(slot)
+        realm = top_liege(owner) or owner
+        ring = realms.get(realm, {}).get("ring", 4)
+        if ring == 4 and tile["tier"] not in ("Empire", "Kingdom") and not is_kin:
+            continue
+        events.append(
+            {
+                "kind": "title_loss",
+                "date": mem.get("date"),
+                "ring": ring,
+                "grade": fade(ring, mem.get("date"), ring),
+                "who": owner,
+                "who2": taker,
+                "whoName": characters.get(owner, {}).get("name"),
+                "who2Name": characters.get(taker or -1, {}).get("name"),
+                "title": tile["name"],
+                "titleKey": tile["key"],
+                "tier": tile["tier"],
+                "action": mem.get("reason"),
+                "why": reason_text(mem.get("reason"), "ru"),
+                "source": "memory",
+                "realm": realm_name_of(owner),
+                "kin": is_kin,
+                "v": variant(owner, mem.get("date"), tile["id"]),
+            }
+        )
+
+    # Войны, у которых есть повод из сейва, пишем по сейву; воспоминание о том же
+    # столкновении только повторяет факт без причины.
+    save_war_pairs = {
+        (war.get("attacker"), war.get("defender"))
+        for war in (extra.get("wars") or [])
+        if war.get("attacker")
+    }
+
     for mem in memories:
         owner = owners.get(mem["id"])
         kind = mem["kind"]
+        # Потерю титула собирает отдельный проход: там есть имя титула и новый держатель.
+        if kind == "title_loss":
+            continue
         ring = person_ring(owner) if owner else 4
         year = year_of(mem["date"])
         if not year:
@@ -883,6 +1291,24 @@ def main() -> None:
             if pid != owner:
                 other = pid
                 break
+        other_role = next((role for role, pid in mem["p"].items() if pid == other), None)
+        other_name = mem.get("pNames", {}).get(other_role) if other_role else None
+        if kind == "war" and ((owner, other) in save_war_pairs or (other, owner) in save_war_pairs):
+            continue
+        # Незнакомое воспоминание — запись, но только о своих: чужие бытовые заметки летопись засоряют.
+        if kind == "note" and characters.get(owner or -1, {}).get("house") not in dynasty_houses:
+            continue
+        # Категория повода из памяти: причина есть и у давно закончившейся войны.
+        cb_kind = mem.get("cbKind")
+        label, family = WAR_MEMORY_CB.get(cb_kind, (None, None)) if cb_kind else (None, None)
+        is_war = kind in ("war", "war_win", "war_loss")
+        # Война без владельца никому не принадлежит: в летописи ей нечего делать.
+        if is_war and not owner:
+            continue
+        # Получение титула: память знает, какого именно, и почему.
+        mem_title = titles.get(mem.get("titleId") or -1) if mem.get("titleId") else None
+        if mem_title and mem_title["tier"] not in ("Empire", "Kingdom", "Duchy", "County"):
+            mem_title = None
         events.append(
             {
                 "kind": kind,
@@ -891,13 +1317,83 @@ def main() -> None:
                 "grade": fade(ring, mem["date"], ring),
                 "who": owner,
                 "who2": other,
-                "title": titles.get(mem["v"].get("war_title") or -1, {}).get("name"),
-                "type": mem["type"],
+                "whoName": characters.get(owner or -1, {}).get("name"),
+                "who2Name": other_name or characters.get(other or -1, {}).get("name"),
+                "title": save_title_names.get(str(mem.get("warTitle"))) if mem.get("warTitle") else (mem_title["name"] if mem_title else None),
+                "titleKey": mem_title["key"] if mem_title else None,
+                "tier": mem_title["tier"] if mem_title else None,
+                "action": mem.get("titleReason"),
+                "why": reason_text(mem.get("titleReason"), "ru"),
+                "source": "memory" if mem_title else None,
+                "type": (label or ("война" if kind == "war" else mem["type"])) if is_war else mem["type"],
+                "family": family if is_war else None,
+                "cb": cb_kind if is_war else None,
+                "role": mem.get("role") if kind == "war" else None,
                 "realm": realm_name_of(owner),
                 "kin": characters.get(owner or -1, {}).get("house") in dynasty_houses,
                 "v": variant(mem["id"]),
             }
         )
+
+    # ------------------------------------------------------------- войны из сейва
+    # Воспоминания дают «где-то воевали»; сейв даёт повод, цель и стороны.
+    wars_added = 0
+    for war in extra.get("wars") or []:
+        # Имя переменной не `date`: цикл в Python не создаёт области видимости,
+        # и одна война подменяла дату сейва в meta.
+        war_date = war.get("start")
+        attacker = war.get("attacker")
+        defender = war.get("defender")
+        if not war_date or not attacker:
+            continue
+        target_key = (war.get("targets") or [None])[0]
+        tile = titles.get(key_index.get(target_key, -1), {})
+        target_name = tile.get("name") or (extra.get("names") or {}).get(target_key or "")
+        family = cb_family(war.get("cb") or "")
+        kin_attacker = characters.get(attacker, {}).get("house") in dynasty_houses
+        kin_defender = characters.get(defender or -1, {}).get("house") in dynasty_houses
+        role = "attack" if kin_attacker else "defend" if kin_defender else "third"
+
+        # Исход: менялся ли держатель цели с начала войны к дате сейва.
+        outcome = None
+        outcome_holder = None
+        if tile:
+            before = holder_at(tile["id"], war_date)
+            after = holder_at(tile["id"], war_date)
+            if after and before != after:
+                outcome = "attacker" if after == attacker else "other"
+                outcome_holder = characters.get(after, {}).get("name")
+            else:
+                outcome = "none"
+        ring = person_ring(attacker)
+        events.append(
+            {
+                "kind": "war",
+                "date": war_date,
+                "ring": ring,
+                "grade": fade(ring, war_date, ring),
+                "who": attacker,
+                "who2": defender,
+                # Имена нужны и для тех, кого нет в дереве рода: в событиях их нет.
+                "whoName": characters.get(attacker, {}).get("name"),
+                "who2Name": characters.get(defender or -1, {}).get("name"),
+                "title": target_name,
+                "tier": tile.get("tier"),
+                "type": cb_label(war.get("cb") or ""),
+                "cb": war.get("cb") or "",
+                "family": family,
+                "role": role,
+                "outcome": outcome,
+                "outcomeHolder": outcome_holder,
+                "allies": max(len(war.get("attackers") or []) - 1, 0) + max(len(war.get("defenders") or []) - 1, 0),
+                "realm": realm_name_of(attacker),
+                "kin": characters.get(attacker, {}).get("house") in dynasty_houses,
+                "v": variant(attacker, war_date, war.get("id")),
+            }
+        )
+        wars_added += 1
+    if wars_added:
+        print(f"войны из сейва: {wars_added} — с поводом и целью", flush=True)
 
     # Один человек в один день получил три титула — в летописи это одна весть.
     best_succession: dict[tuple, dict] = {}
@@ -952,12 +1448,16 @@ def main() -> None:
             if not cid or cid in names or cid not in characters:
                 continue
             person = characters[cid]
+            if not person["name"]:
+                # Пустышка из дампа: имя не разрешилось. Лучше «сменился государь»,
+                # чем строка с пустым именем.
+                continue
             own = titles_of(cid)
             names[cid] = {
                 "name": person["name"],
                 "nick": person["nick"],
                 "female": person["female"],
-                "house": "" if person["house_name"].startswith("House ") else person["house_name"],
+                "house": house_title(person["house_name"]) or "",
                 "birth": person["birth"],
                 "death": person["death"],
                 "title": own[0]["name"] if own else None,
@@ -965,12 +1465,12 @@ def main() -> None:
             }
     for realm in realms.values():
         rid = realm["id"]
-        if rid and rid not in names:
+        if rid and rid not in names and realm.get("ruler"):
             names[rid] = {
                 "name": realm.get("ruler"),
                 "nick": realm.get("nick") or "",
                 "female": False,
-                "house": "" if (realm.get("house_name") or "").startswith("House ") else (realm.get("house_name") or ""),
+                "house": house_title(realm.get("house_name")) or "",
                 "birth": realm.get("birth"),
                 "death": realm.get("death"),
                 "title": realm.get("title"),
@@ -994,12 +1494,15 @@ def main() -> None:
             continue
         births = [year_of(characters[c]["birth"]) for c in members_g if characters[c]["birth"]]
         deaths = [year_of(characters[c]["death"]) for c in members_g if characters[c]["death"]]
+        # Поколение с живым членом не закрыто: смерть части не должна ставить точку
+        # всему поколению — иначе в досье «899—936», хотя трое ещё живы.
+        still_alive = any(not characters[c]["death"] for c in members_g)
         generations.append(
             {
                 "gen": g,
                 "members": len(members_g),
                 "from": min(births) if births else None,
-                "to": max(deaths) if deaths else None,
+                "to": None if still_alive else (max(deaths) if deaths else None),
                 "names": [characters[c]["name"] for c in members_g][:6],
             }
         )
@@ -1369,6 +1872,25 @@ def main() -> None:
             "houses": houses_map,
             "family": political,
         }
+
+        # Карта титулов: все тиры, кроме баронства. Клик даёт графство,
+        # а через de jure — герцогство, королевство и империю.
+        from title_map import build as build_title_card
+        from titles_render import render_title_map
+
+        title_card = build_title_card(titles, baronies)
+        titles_out = args.map.with_name("world-map-titles.png")
+        payload["mapIndex"]["titles"] = render_title_map(
+            titles_out, args.game, title_card, centroids, scale=2
+        )
+        (args.out.parent / "titles-map.json").write_text(
+            json.dumps(title_card, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+        )
+        print(
+            f"карта титулов: графств {title_card['stats']['counties']}, "
+            f"провинций {title_card['stats']['provinces']}",
+            flush=True,
+        )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))

@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """Import a Crusader Kings III save into the app.
 
 The save itself contains no map: CK3 keeps map geometry in the game folder
@@ -197,7 +197,7 @@ def main() -> None:
     print("The map is not inside the save: it is taken from the game folder.\n")
 
     # 1. Save
-    save = Path(args.save) if args.save else None
+    save = Path(args.save).expanduser().resolve() if args.save else None
     if not save or not save.exists():
         if args.yes:
             raise SystemExit("Save file not found. Pass it with --save.")
@@ -227,7 +227,7 @@ def main() -> None:
         if not extractor.exists():
             raise SystemExit(f"Extractor not found: {extractor}")
 
-    work = pick_work(Path(args.work))
+    work = pick_work(Path(args.work).expanduser().resolve())
     dump = work / "gamestate.json"
     if str(work) != str(Path(args.work)):
         print(f"Рабочая папка: {work}")
@@ -259,6 +259,10 @@ def main() -> None:
         "-n", "--no-vis",
         "--dump", str(dump),
     ]
+    if dump.exists():
+        # Старый дамп с прошлого импорта прошёл бы проверку «файл есть» и хроника
+        # собралась бы от чужого сейва. Поэтому — сносим перед запуском.
+        dump.unlink()
     try:
         run(read_command, "Reading the save", cwd=exe_cwd)  # шаблоны лежат рядом с экстрактором
     except SystemExit:
@@ -266,6 +270,8 @@ def main() -> None:
         print("\nЭкстрактор завершился с ошибкой. Пробую другую рабочую папку.")
         work = pick_work(Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import")
         dump = work / "gamestate.json"
+        if dump.exists():
+            dump.unlink()
         read_command[read_command.index("-o") + 1] = str(work)
         read_command[read_command.index("--dump") + 1] = str(dump)
         try:
@@ -276,6 +282,8 @@ def main() -> None:
         # Последняя попытка: дамп рядом с экстрактором. Туда запись проходит даже
         # когда защита Windows не пускает стороннюю программу в выбранную папку.
         beside = extractor.parent / "gamestate.json"
+        if beside.exists():
+            beside.unlink()
         read_command[read_command.index("-o") + 1] = str(extractor.parent)
         read_command[read_command.index("--dump") + 1] = str(beside)
         try:
@@ -291,8 +299,29 @@ def main() -> None:
         )
     print(f"Dump size: {dump.stat().st_size / 1048576:.1f} MB")
 
-    # 6. Build the world and its map.
-    out_dir = Path(args.out)
+    # 6. Дополнение из сейва: войны с поводами и история титулов. Экстрактор их не отдаёт,
+    #    а игра хранит в текстовом gamestate. Без этого в хронике нет причин войн.
+    extra = work / "save-extra.json"
+    try:
+        run([sys.executable, "tools/save_reader.py", "--save", str(save), "--out", str(extra)], "Save additions")
+        if not extra.exists():
+            extra = None
+    except SystemExit:
+        print("Сейв-дополнение не собралось — собираю мир без войн и без новой истории титулов.")
+        extra = None
+
+    # Имена поводов — из локализации игры: ключ повода совпадает с ключом локализации.
+    if game and (game / "localization").exists():
+        try:
+            run(
+                [sys.executable, "tools/cb_names.py", "--game", str(game), "--out", str(CACHE / "cb-names.json")],
+                "Casus belli names",
+            )
+        except SystemExit:
+            print("Имена поводов не собрались — останутся свои названия из build_world.py.")
+
+    # 7. Build the world and its map.
+    out_dir = Path(args.out).expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
     build_args = [
         sys.executable, "tools/build_world.py",
@@ -301,6 +330,8 @@ def main() -> None:
         "--map", str(out_dir / "world-map.png"),
         "--game", str(game),
     ]
+    if extra:
+        build_args += ["--extra", str(extra)]
     # Разовые сбои чтения диска случаются: один повтор снимает большую часть.
     try:
         run(build_args, "Building the world")

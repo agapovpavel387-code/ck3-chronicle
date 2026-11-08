@@ -358,7 +358,8 @@ function setupMap() {
       const rec = lords[String(cur)];
       if (!rec) break;
       people.push({ id: cur, ...rec });
-      cur = rec.liege;
+      // Вассал самого себя — не подчинение, а мусор в данных.
+      cur = rec.liege === cur ? null : rec.liege;
     }
     return {
       key,

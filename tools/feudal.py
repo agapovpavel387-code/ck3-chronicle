@@ -49,7 +49,9 @@ def person_chain(cid: int | None, characters: dict[int, dict], limit: int = MAX_
                 "title": person.get("main_title") or "",
             }
         )
-        current = person.get("liege")
+        liege = person.get("liege")
+        # В сейве 227 персонажей числятся вассалами сами себе — это не подчинение.
+        current = None if liege == current else liege
     return out
 
 

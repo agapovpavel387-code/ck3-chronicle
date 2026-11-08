@@ -1426,6 +1426,9 @@ def main() -> None:
                 "death": person["death"],
                 "title": own[0]["name"] if own else None,
                 "traits": person["traits"][:3],
+                # Феодальное подчинение — нужно и карте, и хронике.
+                "liege": person.get("liege"),
+                "suzerain": suzerain_of(cid, characters),
             }
     for realm in realms.values():
         rid = realm["id"]

@@ -179,12 +179,20 @@ let titlesLoading = null;
 // Карта титулов грузится один раз и только когда её открыли.
 function loadTitlesCard() {
   if (titlesCard) return Promise.resolve(titlesCard);
+  // С file:// fetch запрещён: там карта приходит скриптом.
+  if (window.__TITLES__) { titlesCard = window.__TITLES__; return Promise.resolve(titlesCard); }
   if (!titlesLoading) {
     const tag = state.world.meta?.build ? `?v=${state.world.meta.build}` : '';
     titlesLoading = fetch('_data/titles-map.json' + tag)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { titlesCard = data; return data; })
-      .catch(() => null);
+      .catch(() => null)
+      .then(async (data) => {
+        if (data) return data;
+        await loadScript('_data/titles-map.js' + tag);
+        titlesCard = window.__TITLES__ || null;
+        return titlesCard;
+      });
   }
   return titlesLoading;
 }
@@ -203,12 +211,16 @@ function setupMap() {
   const pick = new Image();
   const buffer = document.createElement('canvas');
   let ctx = null;
+  // Для какого файла готов буфер. Пока не совпадает — клик не читаем:
+  // иначе координаты считаются по новой карте, а пиксели берутся из старой.
+  let ctxFor = '';
 
   pick.addEventListener('load', () => {
     buffer.width = pick.naturalWidth;
     buffer.height = pick.naturalHeight;
     ctx = buffer.getContext && buffer.getContext('2d', { willReadFrequently: true });
     if (ctx) ctx.drawImage(pick, 0, 0);
+    ctxFor = pick.src;
   });
   const political = state.world.mapIndex?.political;
   const titles = state.world.mapIndex?.titles;
@@ -273,27 +285,41 @@ function setupMap() {
     let startY = 0;
     let originX = 0;
     let originY = 0;
-    wrapEl.addEventListener('pointerdown', (ev) => {
+    const beginPan = (clientX, clientY, pointerId) => {
       if (zoom.s <= 1.001) return;
       panning = true;
       dragged = false;
-      startX = ev.clientX; startY = ev.clientY;
+      startX = clientX; startY = clientY;
       originX = zoom.x; originY = zoom.y;
-      wrapEl.setPointerCapture?.(ev.pointerId);
-    });
-    wrapEl.addEventListener('pointermove', (ev) => {
+      if (pointerId != null) wrapEl.setPointerCapture?.(pointerId);
+    };
+    const movePan = (clientX, clientY) => {
       if (!panning) return;
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
+      const dx = clientX - startX;
+      const dy = clientY - startY;
       if (Math.abs(dx) + Math.abs(dy) > 5) dragged = true;
       zoom.x = originX + dx;
       zoom.y = originY + dy;
       clampZoom();
-    });
+    };
     const stopPan = () => { panning = false; };
-    wrapEl.addEventListener('pointerup', stopPan);
-    wrapEl.addEventListener('pointercancel', stopPan);
-    wrapEl.addEventListener('pointerleave', stopPan);
+
+    // Основной путь — указатель; запасной — мышь, если браузер не шлёт PointerEvent.
+    if (window.PointerEvent) {
+      wrapEl.addEventListener('pointerdown', (ev) => beginPan(ev.clientX, ev.clientY, ev.pointerId));
+      wrapEl.addEventListener('pointermove', (ev) => movePan(ev.clientX, ev.clientY));
+      wrapEl.addEventListener('pointerup', stopPan);
+      wrapEl.addEventListener('pointercancel', stopPan);
+      wrapEl.addEventListener('pointerleave', stopPan);
+    } else {
+      wrapEl.addEventListener('mousedown', (ev) => { ev.preventDefault(); beginPan(ev.clientX, ev.clientY, null); });
+      window.addEventListener('mousemove', (ev) => movePan(ev.clientX, ev.clientY));
+      window.addEventListener('mouseup', stopPan);
+    }
+    // Курсор подсказывает, что карту можно тащить, ещё до приближения.
+    wrapEl.addEventListener('mousemove', () => {
+      if (zoom.s <= 1.001) img.style.cursor = 'zoom-in';
+    });
   }
 
   for (const btn of document.querySelectorAll('[data-zoom]')) {
@@ -315,7 +341,8 @@ function setupMap() {
   });
 
   const indexAt = (ev) => {
-    if (!ctx) return 0;
+    // Буфер должен быть от того же файла, что сейчас на экране.
+    if (!ctx || ctxFor !== pick.src) return 0;
     const rect = img.getBoundingClientRect();
     if (!rect.width) return 0;
     const x = Math.floor(((ev.clientX - rect.left) / rect.width) * buffer.width);

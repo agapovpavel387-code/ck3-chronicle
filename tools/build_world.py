@@ -1869,8 +1869,11 @@ def main() -> None:
                 "since": person.get("birth"),
             }
         title_card["lords"] = lords
-        (args.out.parent / "titles-map.json").write_text(
-            json.dumps(title_card, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+        card_text = json.dumps(title_card, ensure_ascii=False, separators=(",", ":"))
+        (args.out.parent / "titles-map.json").write_text(card_text, encoding="utf-8")
+        # Та же карта скриптом: с file:// fetch не работает, а <script> — работает.
+        (args.out.parent / "titles-map.js").write_text(
+            "window.__TITLES__=" + card_text + ";\n", encoding="utf-8"
         )
         print(
             f"карта титулов: графств {title_card['stats']['counties']}, "

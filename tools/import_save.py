@@ -165,7 +165,6 @@ def pick_work(preferred: Path) -> Path:
         preferred,
         Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import",
         ROOT / "import",
-        Path(os.environ.get("LOCALAPPDATA", Path.home())) / "ck3-chronicle" / "import",
         Path(os.environ.get("TEMP", "/tmp")) / "ck3-chronicle" / "import",
     ]
     seen = []
@@ -182,6 +181,45 @@ def pick_work(preferred: Path) -> Path:
     )
 
 
+def selftest() -> int:
+    """Проверка без игры: запись в папку, поиск шаблонов, копия экстрактора."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+
+        # Запись проверяется делом.
+        assert dir_is_writable(root / "work"), "временная папка должна быть доступна"
+
+        # templates/ ищутся рядом с exe и выше по дереву.
+        vendor = root / "vendor" / "extractor"
+        vendor.mkdir(parents=True)
+        exe = vendor / "ck3_history_extractor.exe"
+        exe.write_bytes(b"fake")
+        assert find_templates(exe) is None, "шаблонов ещё нет"
+        (vendor / "templates").mkdir()
+        (vendor / "templates" / "homeTemplate.html").write_text("x", encoding="utf-8")
+        assert find_templates(exe) == vendor / "templates", find_templates(exe)
+
+        # Копия экстрактора забирает и шаблоны, и токены.
+        (vendor / "tokens_1.tok").write_bytes(b"tok")
+        work = root / "work"
+        work.mkdir(exist_ok=True)
+        stage = stage_extractor(exe, work)
+        assert (stage / exe.name).is_file(), "exe не скопирован"
+        assert (stage / "templates" / "homeTemplate.html").is_file(), "шаблоны не скопированы"
+        assert (stage / "tokens_1.tok").is_file(), "токены не скопированы"
+        # Повторный вызов не падает и не дублирует.
+        assert stage_extractor(exe, work) == stage
+
+        # Рабочая папка выбирается из доступных.
+        chosen = pick_work(work)
+        assert chosen.is_dir(), chosen
+
+    print("OK   импорт: запись, шаблоны, копия экстрактора")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Import a CK3 save into the app.")
     parser.add_argument("--save", help="path to a .ck3 save")
@@ -190,8 +228,11 @@ def main() -> None:
     parser.add_argument("--work", default=str(DEFAULT_WORK), help="working folder for the dump")
     parser.add_argument("--lang", default="russian", help="save language: russian, english, french, …")
     parser.add_argument("--yes", action="store_true", help="do not ask anything, fail instead")
-    parser.add_argument("--out", default=str(APP_DATA), help="where to put world.json and the map")
+    parser.add_argument("--out", default=str(APP_DATA), help="where to put world.js and the map")
+    parser.add_argument("--selftest", action="store_true", help="проверка без игры")
     args = parser.parse_args()
+    if args.selftest:
+        raise SystemExit(selftest())
 
     print("Chronicle of the House - import a save")
     print("The map is not inside the save: it is taken from the game folder.\n")
@@ -326,7 +367,7 @@ def main() -> None:
     build_args = [
         sys.executable, "tools/build_world.py",
         "--dump", str(dump),
-        "-o", str(out_dir / "world.json"),
+        "-o", str(out_dir / "world.js"),
         "--map", str(out_dir / "world-map.png"),
         "--game", str(game),
     ]
@@ -339,7 +380,7 @@ def main() -> None:
         print("\nСборка мира не удалась — повторяю один раз.")
         run(build_args, "Building the world (repeat)")
 
-    meta = json.loads((out_dir / "world.json").read_text(encoding="utf-8"))["meta"]
+    meta = load_world(out_dir / "world.js")["meta"]
     print("\nDone.")
     print(f"  Date:    {meta.get('date')}")
     print(f"  Player:  {meta.get('player', {}).get('name')} ({meta.get('player', {}).get('house')})")

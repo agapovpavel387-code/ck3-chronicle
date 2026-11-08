@@ -6,7 +6,8 @@ const { inject } = require('./app_scripts');
 
 const APP = process.argv[2] || '.';
 const html = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
-const world = JSON.parse(fs.readFileSync(path.join(APP, '_data/world.json'), 'utf8'));
+const { readWorld } = require('./world_data');
+const world = readWorld(APP);
 
 const errors = [];
 const vc = new VirtualConsole();
@@ -21,6 +22,7 @@ const dom = new JSDOM(html, {
   beforeParse(window) {
     // Тесты проверяют русский интерфейс: в jsdom язык браузера английский.
     window.localStorage.setItem('chronicle.lang', 'ru');
+    window.__WORLD__ = world;
     window.fetch = async () => ({ ok: true, json: async () => world, status: 200 });
     window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
     window.Element.prototype.getBoundingClientRect = function () { return { width: 1200, height: 700, top: 0, left: 0, right: 1200, bottom: 700 }; };

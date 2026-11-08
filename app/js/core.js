@@ -5,7 +5,6 @@
  * Классический скрипт без сборки: порядок подключения задан в index.html.
  */
 'use strict';
-const DATA_URL = '_data/world.json';
 const STORE = 'chronicle.knowledge.v2';
 // Свёрнутость и камера рода: одно начальное состояние для загрузки и сброса.
 function freshTree() {

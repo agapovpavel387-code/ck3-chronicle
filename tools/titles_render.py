@@ -55,6 +55,67 @@ def _crop_box(points, width: int, height: int, margin: float = 0.06):
     return (left, top, right, bottom)
 
 
+def edges(layer) -> "np.ndarray":
+    """Границы: пиксель рядом с чужим титулом (или с водой)."""
+    import numpy as np
+
+    mask = np.zeros_like(layer, dtype=bool)
+    mask[:, 1:] |= (layer[:, 1:] != layer[:, :-1]) & ((layer[:, 1:] != 0) | (layer[:, :-1] != 0))
+    mask[:, :-1] |= (layer[:, :-1] != layer[:, 1:]) & ((layer[:, :-1] != 0) | (layer[:, 1:] != 0))
+    mask[1:, :] |= (layer[1:, :] != layer[:-1, :]) & ((layer[1:, :] != 0) | (layer[:-1, :] != 0))
+    mask[:-1, :] |= (layer[:-1, :] != layer[1:, :]) & ((layer[:-1, :] != 0) | (layer[1:, :] != 0))
+    return mask
+
+
+def thicken(mask, radius: int) -> "np.ndarray":
+    """Утолщает линию: радиус 3 — три пикселя в поперечнике."""
+    if radius <= 1:
+        return mask
+    grown = mask.copy()
+    for _ in range(radius - 1):
+        shifted = grown.copy()
+        shifted[:, 1:] |= grown[:, :-1]
+        shifted[:, :-1] |= grown[:, 1:]
+        shifted[1:, :] |= grown[:-1, :]
+        shifted[:-1, :] |= grown[1:, :]
+        grown = shifted
+    return grown
+
+
+def selftest() -> int:
+    """Проверка без игры: палитра, рамка, границы."""
+    import numpy as np
+
+    tones = _palette(12)
+    assert len(tones) == 12, len(tones)
+    assert all(0 <= c <= 255 for tone in tones for c in tone), tones[0]
+    assert all(sum(tone) / 3 > 150 for tone in tones), tones[0]
+
+    assert _crop_box([], 100, 50) == (0, 0, 100, 50)
+    box = _crop_box([(10, 10), (90, 40)], 100, 50)
+    assert 0 <= box[0] < box[2] <= 100 and 0 <= box[1] < box[3] <= 50, box
+
+    layer = np.zeros((6, 6), dtype=np.int32)
+    layer[:, :3] = 1
+    layer[:, 3:] = 2
+    mask = edges(layer)
+    assert mask.any(), "нет границы между титулами"
+    assert mask[:, 2].all() or mask[:, 3].all(), mask.astype(int).tolist()
+
+    same = np.ones((6, 6), dtype=np.int32)
+    assert not edges(same).any(), "граница там, где всё одно"
+
+    thin = np.zeros((7, 7), dtype=bool)
+    thin[3, 3] = True
+    wide = thicken(thin, 3)
+    assert wide.sum() > thin.sum(), (thin.sum(), wide.sum())
+    assert wide.sum() <= 49, wide.sum()
+
+    print("OK   карта титулов: палитра, рамка, границы")
+    print(f"OK   тонов {len(tones)}, радиус 3 даёт {wide.sum()} пикселей")
+    return 0
+
+
 def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: int = 2) -> dict:
     """Рисует карту титулов и индексную карту. Возвращает описание для мира."""
     import numpy as np
@@ -137,28 +198,6 @@ def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: 
     titled = land & (layer_county > 0)
     canvas[titled] = tone_map[layer_county[titled]]
 
-    def edges(layer: np.ndarray) -> np.ndarray:
-        """Границы: пиксель рядом с чужим титулом (или с водой)."""
-        mask = np.zeros_like(layer, dtype=bool)
-        mask[:, 1:] |= (layer[:, 1:] != layer[:, :-1]) & ((layer[:, 1:] != 0) | (layer[:, :-1] != 0))
-        mask[:, :-1] |= (layer[:, :-1] != layer[:, 1:]) & ((layer[:, :-1] != 0) | (layer[:, 1:] != 0))
-        mask[1:, :] |= (layer[1:, :] != layer[:-1, :]) & ((layer[1:, :] != 0) | (layer[:-1, :] != 0))
-        mask[:-1, :] |= (layer[:-1, :] != layer[1:, :]) & ((layer[:-1, :] != 0) | (layer[1:, :] != 0))
-        return mask
-
-    def thicken(mask: np.ndarray, radius: int) -> np.ndarray:
-        if radius <= 1:
-            return mask
-        grown = mask.copy()
-        for _ in range(radius - 1):
-            shifted = grown.copy()
-            shifted[:, 1:] |= grown[:, :-1]
-            shifted[:, :-1] |= grown[:, 1:]
-            shifted[1:, :] |= grown[:-1, :]
-            shifted[:-1, :] |= grown[1:, :]
-            grown = shifted
-        return grown
-
     canvas[edges(layer_county)] = county_ink
     canvas[edges(layer_duchy)] = duchy_ink
     canvas[thicken(edges(layer_kingdom), 2)] = kingdom_ink
@@ -212,3 +251,19 @@ def province_of_pixels(block, keys, ids, provinces):
     pos = np.clip(np.searchsorted(keys, flat), 0, len(keys) - 1)
     prov = np.where(keys[pos] == flat, ids[pos], 0).astype(np.int32)
     return np.clip(prov, 0, max(provinces))
+
+
+def main() -> int:
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Карта титулов: рендер")
+    parser.add_argument("--selftest", action="store_true", help="проверка без игры")
+    args = parser.parse_args()
+    if args.selftest:
+        return selftest()
+    parser.error("нужен --selftest: рендер вызывается из build_world.py")
+    return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

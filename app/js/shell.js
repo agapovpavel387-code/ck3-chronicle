@@ -9,25 +9,21 @@
 async function boot() {
   bind();
   try {
-    const res = await fetch(DATA_URL, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    startWith(await res.json());
-  } catch {
-    try {
-      await loadScript('_data/world.js');
-      if (!window.__WORLD__) throw new Error('в world.js нет данных');
-      startWith(window.__WORLD__);
-    } catch (err) {
-      el('boot').hidden = true;
-      el('app').hidden = false;
-      if (location.protocol === 'http:' || location.protocol === 'https:') {
-        // Открыто через start.cmd: предложим выбрать сохранение прямо здесь.
-        setView('import');
-      } else {
-        el('main').innerHTML = `<div class="empty-state"><h3>Мир не загружен</h3>
-            <p>Не удалось прочитать <code>${DATA_URL}</code>. Запустите <code>start.cmd</code> (Windows) или <code>./start.sh</code>, чтобы выбрать сохранение.</p>
-            <p class="small muted">${esc(err.message)}</p></div>`;
-      }
+    // Мир — один файл: `_data/world.js`. Он работает и через сервер, и с file://.
+    // Если данные уже в странице (тесты, встраивание) — не грузим второй раз.
+    if (!window.__WORLD__) await loadScript('_data/world.js');
+    if (!window.__WORLD__) throw new Error('в world.js нет данных');
+    startWith(window.__WORLD__);
+  } catch (err) {
+    el('boot').hidden = true;
+    el('app').hidden = false;
+    if (location.protocol === 'http:' || location.protocol === 'https:') {
+      // Открыто через start.cmd: предложим выбрать сохранение прямо здесь.
+      setView('import');
+    } else {
+      el('main').innerHTML = `<div class="empty-state"><h3>Мир не загружен</h3>
+          <p>Не удалось прочитать <code>_data/world.js</code>. Запустите <code>start.cmd</code> (Windows) или <code>./start.sh</code>, чтобы выбрать сохранение.</p>
+          <p class="small muted">${esc(err.message)}</p></div>`;
     }
   }
 }
@@ -232,8 +228,6 @@ function bind() {
   document.addEventListener('click', (ev) => {
     const nav = ev.target.closest('[data-nav]');
     if (nav) { ev.preventDefault(); setView(nav.dataset.nav); return; }
-    const worldBtn = ev.target.closest('[data-world]');
-    if (worldBtn) { ev.preventDefault(); loadWorldUrl(worldBtn.dataset.world); }
   });
   window.addEventListener('hashchange', () => {
     const view = location.hash.replace('#', '') || 'tree';
@@ -241,20 +235,6 @@ function bind() {
   });
   el('loadData').addEventListener('click', () => el('loadDialog').showModal());
   el('fileInput').addEventListener('change', (ev) => loadFile(ev.target.files?.[0]));
-}
-async function loadWorldUrl(url) {
-  try {
-    const res = await fetch(url, { cache: 'no-store' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    state.settings.from = null;
-    state.settings.to = null;
-    state.personId = null;
-    startWith(await res.json());
-    setView('tree');
-    toast('Мир загружен');
-  } catch (err) {
-    toast('Не удалось открыть файл: ' + err.message);
-  }
 }
 async function loadFile(file) {
   if (!file) return;

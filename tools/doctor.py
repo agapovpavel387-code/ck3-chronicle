@@ -24,6 +24,8 @@ except Exception:
     pass
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+from world_data import load_world  # noqa: E402
 
 
 def count_map(path: Path, section: str) -> tuple[int, int]:
@@ -88,14 +90,54 @@ def character_stats(path: Path, dynasties: dict[int, int]) -> dict:
     return {"total": total, "with_house": with_house, "with_dynasty": with_dynasty, "sample": sample}
 
 
+def selftest() -> int:
+    """Проверка без игры: разбор маленького дампа."""
+    import json
+    import tempfile
+
+    dump = {
+        "houses": {
+            "1": {"name": "Дом", "parent": {"id": 10}},
+            "2": {"name": "", "parent": {"id": 10}},
+        },
+        "dynasties": {"10": {"name": "Династия"}},
+        "characters": {
+            "1": {"name": "Первый", "house": {"id": 1, "name": "Дом"}},
+            "2": {"name": "Второй", "house": {"id": 2}},
+            "3": {"name": "Третий"},
+        },
+    }
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / "dump.json"
+        path.write_text(json.dumps(dump), encoding="utf-8")
+
+        total, named = count_map(path, "houses")
+        assert (total, named) == (2, 1), (total, named)
+
+        mapping = house_dynasties(path)
+        assert mapping == {1: 10, 2: 10}, mapping
+
+        stats = character_stats(path, mapping)
+        assert stats["total"] == 3, stats
+        assert stats["with_house"] == 2, stats
+        assert stats["with_dynasty"] == 2, stats
+        assert stats["sample"] and stats["sample"]["name"] == "Первый", stats["sample"]
+
+    print("OK   доктор: дома, династии, персонажи")
+    return 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Diagnose a CK3 dump for the app.")
     parser.add_argument("--dump", type=Path, help="gamestate.json made by the extractor")
+    parser.add_argument("--selftest", action="store_true", help="проверка без игры")
     parser.add_argument("--save", type=Path, help="a .ck3 save to dump first")
     parser.add_argument("--extractor", type=Path, help="ck3_history_extractor.exe (with --save)")
     parser.add_argument("--game", type=Path, help="game folder (for extraction and the map)")
     parser.add_argument("--lang", default="russian")
     args = parser.parse_args()
+    if args.selftest:
+        raise SystemExit(selftest())
 
     dump = args.dump
     if not dump and args.save:
@@ -137,9 +179,9 @@ def main() -> None:
         print(f"        fields: {', '.join(sample['keys'])}")
 
     # Что видит сборщик мира
-    world_path = ROOT / "app" / "_data" / "world.json"
+    world_path = ROOT / "app" / "_data" / "world.js"
     if world_path.exists():
-        world = json.loads(world_path.read_text(encoding="utf-8"))
+        world = load_world(world_path)
         player = world.get("meta", {}).get("player", {})
         dynasty = world.get("dynasty") or {}
         print("\nCurrent world in app/_data:")

@@ -28,6 +28,7 @@ except Exception:
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+from world_data import load_world  # noqa: E402
 
 from titles import (  # noqa: E402
     LANDED_TIERS,
@@ -157,7 +158,7 @@ def check_model(titles: dict[int, dict], people: set[int] | None, baseline: dict
 
 def check_world(world_path: Path) -> None:
     """Что доходит до летописи: имя титула, причина, отсутствие повторов."""
-    world = json.loads(Path(world_path).read_text(encoding="utf-8"))
+    world = load_world(world_path)
     events = world.get("events") or []
     losses = [e for e in events if e.get("kind") == "title_loss"]
     successions = [e for e in events if e.get("kind") == "succession"]

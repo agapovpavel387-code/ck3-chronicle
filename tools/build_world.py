@@ -363,7 +363,8 @@ def is_shown(tile: dict | None) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dump", type=Path, required=True)
-    parser.add_argument("-o", "--out", type=Path, default=ROOT / "world.json")
+    parser.add_argument("-o", "--out", type=Path, default=ROOT / "world.js", help="куда писать мир (.js)")
+    parser.add_argument("--json", action="store_true", help="дописать ещё и .json — для отладки")
     parser.add_argument(
         "--game",
         type=Path,
@@ -1843,8 +1844,12 @@ def main() -> None:
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
-    args.out.write_text(text, encoding="utf-8")
-    args.out.with_suffix(".js").write_text("window.__WORLD__=" + text + ";\n", encoding="utf-8")
+    # Мир живёт одним файлом: `.js` работает и через сервер, и с file://.
+    # Второй копии в JSON не держим — это десять мегабайт дубля.
+    js_path = args.out.with_suffix(".js")
+    js_path.write_text("window.__WORLD__=" + text + ";\n", encoding="utf-8")
+    if args.json:
+        args.out.with_suffix(".json").write_text(text, encoding="utf-8")
     print(
         f"держав {len(all_realms)}, известно {len(known)}, род {len(members)} (дерево {len(people)}), "
         f"событий {len(events)}; {args.out.stat().st_size / 1e6:.2f} МБ"

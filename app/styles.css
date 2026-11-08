@@ -320,6 +320,7 @@ code { font-family: var(--font-mono); font-size: .85em; font-variant-numeric: ta
   max-width: 220px; pointer-events: none; z-index: 6;
 }
 .map-tip b { display: block; font-weight: 600; }
+.map-tip__key { display: block; margin-top: 2px; font-size: .78em; font-style: normal; color: color-mix(in srgb, var(--surface-2) 55%, transparent); letter-spacing: .02em; }
 .map-tip span { color: color-mix(in srgb, var(--surface-2) 72%, transparent); }
 .map-detail { padding: 10px 14px; border-top: 1px solid var(--rule); }
 .map-detail p { margin: 4px 0 0; }

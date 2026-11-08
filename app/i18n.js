@@ -113,6 +113,8 @@
       'world.untitledLandNote': 'Провинция есть, но графства у неё в сейве нет — записывать нечего.',
       'world.mapMismatch': 'Карта и данные не совпадают',
       'world.mapMismatchNote': 'Пересоберите мир: build_world.py пишет карту и данные вместе.',
+      'world.mapShifted': 'Карта не совпадает с данными',
+      'world.mapShiftedNote': 'Контрольные точки не сходятся — пересоберите мир: build_world.py пишет карту и данные вместе.',
       'world.zoomHint': 'колесо — масштаб, перетаскивание — сдвиг',
 
       'chronicle.title': 'Хроника',
@@ -379,6 +381,8 @@
       'world.untitledLandNote': 'The province exists, but the save gives it no county — there is nothing to record.',
       'world.mapMismatch': 'The map and the data do not match',
       'world.mapMismatchNote': 'Rebuild the world: build_world.py writes the map and the data together.',
+      'world.mapShifted': 'The map does not match the data',
+      'world.mapShiftedNote': 'The control points disagree — rebuild the world: build_world.py writes the map and the data together.',
       'world.zoomHint': 'wheel to zoom, drag to pan',
 
       'chronicle.title': 'Chronicle',

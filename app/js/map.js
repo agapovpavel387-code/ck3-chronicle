@@ -342,6 +342,26 @@ function setupMap() {
 
   // Цепочка титулов: графство → герцогство → королевство → империя.
   const UNTITLED = 0xffffff;
+  // Сверка карты с данными по контрольным точкам: ловит сдвиг и рассинхрон.
+  let probeReport = null;
+  const verifyProbe = (card) => {
+    if (probeReport || !ctx) return probeReport;
+    const points = card.probe || [];
+    if (!points.length) return null;
+    let ok = 0;
+    const bad = [];
+    for (const point of points) {
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) continue;
+      const d = ctx.getImageData(point.x, point.y, 1, 1).data;
+      const idx = (d[0] << 16) | (d[1] << 8) | d[2];
+      const got = card.counties[idx - 1];
+      if (got === point.key) ok += 1;
+      else bad.push({ want: point.key, got: got || '—', at: [point.x, point.y] });
+    }
+    probeReport = { ok, total: points.length, bad };
+    return probeReport;
+  };
+
   const titleAt = async (ev) => {
     const index = indexAt(ev);
     if (!index) return null;
@@ -349,6 +369,14 @@ function setupMap() {
     const card = await loadTitlesCard();
     if (!card || !card.counties) return null;
     // Карта и данные должны быть от одной сборки: иначе клик покажет чужой титул.
+    const probe = verifyProbe(card);
+    if (probe && probe.ok < probe.total) {
+      detail.hidden = false;
+      detail.innerHTML = `<b>${T('world.mapShifted', 'Карта не совпадает с данными')}</b>
+          <p class="small muted">${T('world.mapShiftedNote', 'Контрольные точки не сходятся — пересоберите мир: build_world.py пишет карту и данные вместе.')}</p>
+          <p class="small muted">${probe.ok} / ${probe.total}</p>`;
+      return null;
+    }
     const expected = state.world.mapIndex?.titles?.counties;
     if (expected && card.counties.length !== expected) {
       detail.hidden = false;
@@ -437,7 +465,8 @@ function setupMap() {
       img.style.cursor = 'pointer';
       const rect = img.getBoundingClientRect();
       const chain = (card.chain?.[index - 1] || []).map((k) => card.names?.[k] || k);
-      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || T('world.freeCounty', 'вольное графство'))}</span>`;
+      // Ключ титула в подсказке: по нему видно, карта это или данные.
+      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || T('world.freeCounty', 'вольное графство'))}</span><em class="map-tip__key">${esc(key)}</em>`;
       tip.hidden = false;
       const left = Math.max(8, Math.min(ev.clientX - rect.left, rect.width - 190));
       tip.style.left = left + 'px';

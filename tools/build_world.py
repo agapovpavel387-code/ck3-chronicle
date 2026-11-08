@@ -1881,6 +1881,26 @@ def main() -> None:
                 "since": person.get("birth"),
             }
         title_card["lords"] = lords
+        # Контрольные точки: пиксель карты → ожидаемый титул. По ним приложение
+        # само видит, совпала ли карта с данными, и говорит об этом.
+        meta_map = payload["mapIndex"]["titles"]
+        crop = meta_map.get("crop") or [0, 0]
+        scale = meta_map.get("scale") or 2
+        probe = []
+        for position, key in enumerate(title_card["counties"], start=1):
+            if len(probe) >= 12:
+                break
+            provinces = [int(p) for p, v in title_card["province"].items() if v == position]
+            point = next((centroids.get(p) for p in provinces if centroids.get(p)), None)
+            if not point:
+                continue
+            probe.append({
+                "key": key,
+                "x": round((point[0] - crop[0]) / scale),
+                "y": round((point[1] - crop[1]) / scale),
+            })
+        title_card["probe"] = probe
+
         card_text = json.dumps(title_card, ensure_ascii=False, separators=(",", ":"))
         (args.out.parent / "titles-map.json").write_text(card_text, encoding="utf-8")
         # Та же карта скриптом: с file:// fetch не работает, а <script> — работает.

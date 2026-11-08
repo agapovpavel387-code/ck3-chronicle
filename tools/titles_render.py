@@ -230,6 +230,9 @@ def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: 
         "counties": len(counties),
         "size": list(out_size),
         "map": out.name,
+        # Рамка и масштаб: по ним приложение проверяет карту контрольными точками.
+        "crop": [left, top],
+        "scale": scale,
     }
 
 

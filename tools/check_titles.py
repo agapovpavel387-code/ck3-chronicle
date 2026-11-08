@@ -30,8 +30,6 @@ ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 
 from titles import (  # noqa: E402
-    CREATED,
-    DESTROYED,
     LANDED_TIERS,
     REASONS,
     attach_memory,

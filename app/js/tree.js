@@ -17,13 +17,13 @@ function lineChips() {
   const active = state.tree.activeLine ?? lineage().playerLine;
   const chips = lines.map((line) => {
     const on = line.id === active;
-    return `<button class="line-chip${on ? ' is-on' : ''}" type="button" aria-pressed="${Boolean(on)}" data-line="${line.id}" title="${esc(lineKind(line.kind) || 'линия')}">
+    return `<button class="line-chip${on ? ' is-on' : ''}" type="button" aria-pressed="${Boolean(on)}" data-line="${line.id}" title="${esc(lineKind(line.kind) || T('tree.line', 'линия'))}">
         <i style="background:${lineColor(line)}"></i>
         <span class="line-chip__name">${esc(line.founder)}</span>
         <span class="line-chip__meta">${esc(y0(line.birth) || '?')} · ${line.size}</span>
       </button>`;
   });
-  return `<div class="line-chips" role="group" aria-label="Линии рода">${chips.join('')}</div>`;
+  return `<div class="line-chips" role="group" aria-label="${T('tree.linesAria', 'Линии рода')}">${chips.join('')}</div>`;
 }
 function viewTree() {
   const { meta } = state.world;
@@ -36,21 +36,21 @@ function viewTree() {
   return `
       <div class="tree-toolbar">
         <div>
-          <p class="eyebrow">династия · ${esc(meta.player.dynasty || meta.player.house || '')}${trunk ? ` · ствол ${esc(trunk.name)}` : ''}</p>
-          <h1 class="tree-title">${esc(meta.player.dynasty || meta.player.house || 'Род')} <span class="tree-title__kind">${lines.length} ${plural(lines.length, 'линия', 'линии', 'линий')} · ${people.length} ${plural(people.length, 'человек', 'человека', 'человек')}</span></h1>
+          <p class="eyebrow">${T('tree.dynasty', 'династия')} · ${esc(meta.player.dynasty || meta.player.house || '')}${trunk ? ` · ${T('tree.trunk', 'ствол')} ${esc(trunk.name)}` : ''}</p>
+          <h1 class="tree-title">${esc(meta.player.dynasty || meta.player.house || 'Род')} <span class="tree-title__kind">${lines.length} ${plural(lines.length, 'линия', 'линии', 'линий', 'line', 'lines')} · ${people.length} ${plural(people.length, 'человек', 'человека', 'человек', 'person', 'people')}</span></h1>
         </div>
         <div class="tree-tools">
           <label class="search search--small">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4 4"/></svg>
-            <span class="sr-only">Поиск по имени</span>
-            <input type="search" id="treeSearch" placeholder="Имя" value="${esc(state.tree.query)}">
+            <span class="sr-only">${T('tree.search', 'Поиск по имени')}</span>
+            <input type="search" id="treeSearch" placeholder="${T('tree.searchShort', 'Имя')}" value="${esc(state.tree.query)}">
           </label>
           <button class="btn btn--ghost btn--small" type="button" id="treeMode">${mode === 'outline' ? T('tree.mode.canvas', 'Полотно') : T('tree.mode.outline', 'Конспект')}</button>
           ${mode === 'outline'
             ? `<button class="btn btn--ghost btn--small" type="button" id="treeExpand">${T('tree.expand', 'Развернуть')}</button>
                <button class="btn btn--ghost btn--small" type="button" id="treeCollapse">${T('tree.collapse', 'Свернуть')}</button>`
-            : `<button class="btn btn--ghost btn--small" type="button" id="zoomOut" aria-label="Уменьшить">−</button>
-               <button class="btn btn--ghost btn--small" type="button" id="zoomIn" aria-label="Увеличить">+</button>
+            : `<button class="btn btn--ghost btn--small" type="button" id="zoomOut" aria-label="${T('tree.zoomOut', 'Уменьшить')}">−</button>
+               <button class="btn btn--ghost btn--small" type="button" id="zoomIn" aria-label="${T('tree.zoomIn', 'Увеличить')}">+</button>
                <button class="btn btn--ghost btn--small" type="button" id="zoomFit">${T('tree.fit', 'Весь род')}</button>`}
         </div>
       </div>
@@ -68,9 +68,9 @@ function viewTree() {
 function outlineLegend() {
   return `<div class="tree-legend tree-legend--marks">
       <span><b>◆</b> ${T('tree.ownsTitle', 'владеет титулом')}</span>
-      <span><b>⚑</b> ${T('tree.warband', 'вольный отряд')}</span>
+      <span><b>⚑</b> ${T('tree.warband', T('world.freeCamp', 'вольный отряд'))}</span>
       <span><b>◇</b> ${T('tree.newHouse', 'новый дом')}</span>
-      <span><i class="mark-dot"></i> ${T('tree.noLand', 'без земли')}</span>
+      <span><i class="mark-dot"></i> ${T('tree.noLand', T('tree.noLand', 'без земли'))}</span>
       <span class="muted">${T('tree.outlineHint', 'строка — человек, отступ — слой')}</span>
     </div>`;
 }
@@ -122,7 +122,7 @@ function personRow(person, children, open, depth) {
     person.camp ? '⚑' : '',
     person.newHouse ? '◇' : '',
   ].filter(Boolean).join(' ');
-  const what = person.title || (person.camp ? (person.campName ? `отряд «${person.campName}»` : 'вольный отряд') : '');
+  const what = person.title || (person.camp ? (person.campName ? `${T('world.camp', T('world.camp', 'отряд'))} «${person.campName}»` : T('world.freeCamp', 'вольный отряд')) : '');
   const role = line && line.founderId === person.id ? (lineKind(line.kind) || '') : '';
   const isPlayer = person.id === state.world.meta?.player?.id;
   const q = (state.tree.query || '').trim().toLowerCase();
@@ -161,8 +161,8 @@ function outlineHtml(people) {
     </section>`;
 
   return [
-    block('Ствол', `${main.length} ${plural(main.length, 'ветвь', 'ветви', 'ветвей')}`, main),
-    detached.length ? block('Отдельные ветви', 'связь со стволом в сейве не сохранилась', detached) : '',
+    block(T('tree.trunkBlock', 'Ствол'), `${main.length} ${plural(main.length, 'ветвь', 'ветви', 'ветвей', 'branch', 'branches')}`, main),
+    detached.length ? block(T('tree.detached', 'Отдельные ветви'), T('tree.detachedNote', 'связь со стволом в сейве не сохранилась'), detached) : '',
   ].join('');
 }
 function treeList(people) {
@@ -170,12 +170,12 @@ function treeList(people) {
   for (const line of orderedLines()) {
     const list = people.filter((p) => p.line === line.id);
     if (!list.length) continue;
-    parts.push(`<section class="gen-block"><h3><span class="branch-dot" style="background:${lineColor(line)}"></span>${esc(line.founder)} · ${esc(lineKind(line.kind) || 'линия')} · ${line.size}</h3><ol class="gen-list">`);
+    parts.push(`<section class="gen-block"><h3><span class="branch-dot" style="background:${lineColor(line)}"></span>${esc(line.founder)} · ${esc(lineKind(line.kind) || T('tree.line', 'линия'))} · ${line.size}</h3><ol class="gen-list">`);
     for (const person of list.sort((a, b) => (a.depth ?? 0) - (b.depth ?? 0) || (yearOf(a.birth) ?? 9999) - (yearOf(b.birth) ?? 9999))) {
       const marks = [];
       if (person.landed) marks.push(T('tree.owns', 'владеет'));
       else if (person.camp) marks.push(`${T('card.camp', 'Отряд').toLowerCase()}${person.campName ? ` «${person.campName}»` : ''}`);
-      else marks.push(T('tree.noLand', 'без земли'));
+      else marks.push(T('tree.noLand', T('tree.noLand', 'без земли')));
       if (person.newHouse) marks.push(T('tree.newHouse', 'новый дом'));
       const titles = (person.titles || []).slice(0, 3).join(', ');
       parts.push(
@@ -307,12 +307,12 @@ function treeSvg(people, meta) {
   const headers = bands
     .map((band) => {
       const color = lineColor(band.line);
-      const kind = lineKind(band.line.kind) || 'линия';
+      const kind = lineKind(band.line.kind) || T('tree.line', 'линия');
       const founderPerson = byId.get(band.line.founderId);
       const fatherOfFounder = founderPerson ? byId.get(founderPerson.father) : null;
       const parentLine = fatherOfFounder && fatherOfFounder.line != null ? lineById(fatherOfFounder.line) : null;
       const parentName = parentLine && parentLine.id !== band.line.id
-        ? (parentLine.kind === 'trunk' ? 'от ствола' : `от линии ${parentLine.founder}`)
+        ? (parentLine.kind === 'trunk' ? T('tree.fromTrunk', 'от ствола') : `${T('tree.fromLine', 'от линии')} ${parentLine.founder}`)
         : '';
       const years = band.line.birth ? `${y0(band.line.birth)}` : '';
       return `<g class="line-band" data-line="${band.line.id}">
@@ -349,7 +349,7 @@ function treeSvg(people, meta) {
       const line1 = words[0] || name;
       const line2 = words.slice(1).join(' ');
       const status = p.landed ? '◆ ' : p.camp ? '⚑ ' : p.newHouse ? '◇ ' : '';
-      const sub = [p.title || (p.camp ? 'отряд' : 'без земли'), p.birth ? `${y0(p.birth)}—${p.death ? y0(p.death) : '…'}` : '']
+      const sub = [p.title || (p.camp ? T('world.camp', 'отряд') : T('tree.noLand', 'без земли')), p.birth ? `${y0(p.birth)}—${p.death ? y0(p.death) : '…'}` : '']
         .filter(Boolean).join(' · ') + (p.spouses && p.spouses.length ? ' · ⚭' : '');
       const color = lineColor(line);
       return `<g class="${cls}" data-person="${p.id}" data-name="${esc(name.toLowerCase())}" tabindex="0" role="button" aria-label="${esc(name)}">
@@ -379,8 +379,8 @@ function personCard(p) {
   const hidden = !p.kin && (p.ring ?? 4) >= 3 && !p.title;
   const skills = p.skills && p.skills.length ? p.skills.join(' · ') : '';
   return `
-      <button class="drawer__close" type="button" id="closeDrawer" aria-label="Закрыть">×</button>
-      <h3>${esc(hidden ? 'Имя неведомо' : nameOf(p))}</h3>
+      <button class="drawer__close" type="button" id="closeDrawer" aria-label="${T('common.close', 'Закрыть')}">×</button>
+      <h3>${esc(hidden ? T('tree.nameUnknown', 'Имя неведомо') : nameOf(p))}</h3>
       <p class="small muted">${esc(houseOf(p) ? T('card.house', 'дом') + ' ' + houseOf(p) : T('card.noHouse', 'род не записан'))}${p.kin ? ' · ' + T('card.ownBlood', 'своя кровь') : ''}${relationTo(p) ? ` · ${esc(relationTo(p))}` : ''}</p>
       <dl>
         <dt>${T('card.years', 'Годы')}</dt><dd>${esc(y0(p.birth) || '?')} — ${esc(p.death ? y0(p.death) : T('card.alive', 'жив'))}</dd>

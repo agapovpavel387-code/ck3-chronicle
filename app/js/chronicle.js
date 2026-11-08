@@ -231,7 +231,7 @@ function viewChronicle() {
     : null;
   return `
       <div class="page-head"><h1>${T('chronicle.title', 'Хроника')}</h1>
-        <p>Год за годом — только то, что дошло до рода. Чем дальше двор, тем короче запись.</p></div>
+        <p>${T('chronicle.lead', 'Год за годом — только то, что дошло до рода. Чем дальше двор, тем короче запись.')}</p></div>
       ${filterName ? `<p class="filter-note">${T('chronicle.onlyTitle', 'Показан только титул')}: <b>${esc(filterName)}</b>
          <button class="btn btn--ghost" type="button" id="clearTitleFilter">${T('chronicle.clearTitle', 'Показать всё')}</button></p>` : ''}
       <div class="chronicle">
@@ -256,7 +256,7 @@ function viewChronicle() {
             <button class="btn btn--ghost" type="button" id="copyDoc">${T('chronicle.copy', 'Скопировать')}</button>
             <button class="btn btn--ghost" type="button" id="downloadDoc">${T('chronicle.download', 'Скачать .md')}</button>
           </div>
-          <p class="controls__hint">Родня — то, что видно только своим: браки, рождения, темницы.</p>
+          <p class="controls__hint">${T('chronicle.privateNote', 'Родня — то, что видно только своим: браки, рождения, темницы.')}</p>
         </form>
         <section class="chronicle__doc" id="doc" aria-live="polite"></section>
       </div>`;
@@ -481,11 +481,11 @@ function prologue(chapters, s) {
 }
 const LAYER_RU = { kin: 'В роду', court: 'При дворе и рядом' };
 function renderEntry(e) {
-  const truth = state.settings.truth ? `<span class="truth">на самом деле: ${esc(truthLine(e))}</span>` : '';
+  const truth = state.settings.truth ? `<span class="truth">${T('chronicle.truthLabel', 'на самом деле:')} ${esc(truthLine(e))}</span>` : '';
   const cause = (e.kind === 'war' || e.kind === 'war_win' || e.kind === 'war_loss') && e.type
     ? `<span class="entry__cause">${esc(e.type)}</span>`
     : '';
-  return `<p class="entry entry--${e.grade}">${cause}${esc(entryText(e))}${truth}</p>`;
+  return `<p class="entry entry--${e.grade}">${cause}${esc(entryText(e))}${truth ? ` ${truth}` : ''}</p>`;
 }
 function renderYear(chapter) {
   const { year, layers, missed } = chapter;
@@ -522,15 +522,15 @@ function renderYear(chapter) {
   const farLead = ['Издали доходило:', 'Из-за моря слышали:', 'Доходило из дальних земель:'][year % 3];
   const far = chapter.far && (chapter.far.wars || chapter.far.deaths || chapter.far.successions)
     ? `<p class="entry entry--far">${farLead} ${[
-          chapter.far.wars ? `войн — ${chapter.far.wars}` : '',
-          chapter.far.deaths ? `смертей — ${chapter.far.deaths}` : '',
-          chapter.far.successions ? `смен власти — ${chapter.far.successions}` : '',
+          chapter.far.wars ? `${T('chronicle.warsCount', 'войн')} — ${chapter.far.wars}` : '',
+          chapter.far.deaths ? `${T('chronicle.deathsCount', 'смертей')} — ${chapter.far.deaths}` : '',
+          chapter.far.successions ? `${T('chronicle.succCount', 'смен власти')} — ${chapter.far.successions}` : '',
         ].filter(Boolean).join(', ')}.${chapter.farNames && chapter.farNames.length ? ` Мелькали: ${chapter.farNames.map((n) => esc(n)).join(', ')}.` : ''}</p>`
     : '';
 
   const missedParts = [];
-  if (missed.court) missedParts.push(`при дворе — ${missed.court}`);
-  if (missed.far) missedParts.push(`издали — ${missed.far}`);
+  if (missed.court) missedParts.push(`${T('chronicle.nearCount', 'при дворе')} — ${missed.court}`);
+  if (missed.far) missedParts.push(`${T('chronicle.farCount', 'издали')} — ${missed.far}`);
   const honesty = missedParts.length
     ? `<span class="year__missed"> · мимо прошло: ${missedParts.join(', ')}</span>`
     : '';

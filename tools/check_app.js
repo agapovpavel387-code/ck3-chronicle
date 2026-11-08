@@ -19,6 +19,8 @@ const dom = new JSDOM(html, {
   pretendToBeVisual: true,
   virtualConsole: vc,
   beforeParse(window) {
+    // Тесты проверяют русский интерфейс: в jsdom язык браузера английский.
+    window.localStorage.setItem('chronicle.lang', 'ru');
     window.fetch = async () => ({ ok: true, json: async () => world, status: 200 });
     window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
     window.HTMLDialogElement.prototype.showModal = function () { this.open = true; };

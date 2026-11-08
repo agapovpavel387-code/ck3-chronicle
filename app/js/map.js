@@ -5,6 +5,17 @@
  * Классический скрипт без сборки: порядок подключения задан в index.html.
  */
 'use strict';
+// Направления приходят из мира по-русски — это данные сборки, а не подписи.
+const DIR_EN = {
+  'север': 'north', 'северо-восток': 'north-east', 'восток': 'east', 'юго-восток': 'south-east',
+  'юг': 'south', 'юго-запад': 'south-west', 'запад': 'west', 'северо-запад': 'north-west',
+};
+function dirText(value) {
+  if (!value) return '';
+  const lang = window.currentLang ? window.currentLang() : 'ru';
+  return lang === 'en' ? (DIR_EN[value] || value) : value;
+}
+
 function viewWorld() {
   const { meta } = state.world;
   const realms = state.world.realms || [];
@@ -18,18 +29,18 @@ function viewWorld() {
     .filter((ring) => byRing.has(ring))
     .map((ring) => {
       const list = byRing.get(ring).sort((a, b) => (a.distance ?? 1e9) - (b.distance ?? 1e9));
-      const title = ['Своё', 'Ближний круг', 'Средний круг', 'Дальний круг'][ring];
+      const title = [T('world.ring0', 'Своё'), T('world.ring1', 'Ближний круг'), T('world.ring2', 'Средний круг'), T('world.ring3', 'Дальний круг')][ring];
       return `<section class="ring-block">
-          <div class="ring-block__head"><h2>${title}</h2><span class="small">кольцо ${ring} · ${list.length}</span></div>
+          <div class="ring-block__head"><h2>${title}</h2><span class="small">${T('world.ringShort', 'кольцо')} ${ring} · ${list.length}</span></div>
           <div class="courts">
             ${list.map((r) => `<article class="court">
               <div class="court__top">
                 <span class="court__name">${esc(r.name)}</span>
-                <span class="court__dist">${r.distance != null ? r.distance + ' px' : ''}${r.bySea ? ' · морем' : ''}</span>
+                <span class="court__dist">${r.distance != null ? r.distance + ' px' : ''}${r.bySea ? ` · ${T('world.bySea', 'морем')}` : ''}</span>
               </div>
               <p class="court__what${r.ring >= 3 ? ' court__what--faint' : ''}">${esc(knownLine(r))}</p>
-              <p class="court__meta">${esc(r.direction || '')}${r.size ? ` · владений ${r.size}` : ''}${r.prestige ? ` · слава ${r.prestige}` : ''}</p>
-              ${r.faith ? `<p class="court__meta">вера — ${esc(r.faith)}${r.faithShare ? ` (${Math.round(r.faithShare * 100)}%)` : ''}${r.culture ? ` · ${esc(r.culture)}` : ''}</p>` : ''}
+              <p class="court__meta">${esc(dirText(r.direction || ''))}${r.size ? ` · ${T('world.holdings', 'владений')} ${r.size}` : ''}${r.prestige ? ` · ${T('world.prestigeShort', 'слава')} ${r.prestige}` : ''}</p>
+              ${r.faith ? `<p class="court__meta">${T('world.faith', 'вера')} — ${esc(r.faith)}${r.faithShare ? ` (${Math.round(r.faithShare * 100)}%)` : ''}${r.culture ? ` · ${esc(r.culture)}` : ''}</p>` : ''}
             </article>`).join('')}
           </div>
         </section>`;
@@ -39,12 +50,12 @@ function viewWorld() {
   const camps = (state.world.people || []).filter((p) => p.kin && p.camp);
   const campsBlock = camps.length
     ? `<section class="ring-block">
-           <div class="ring-block__head"><h2>Вольные отряды</h2><span class="small">${camps.length}</span></div>
-           <p class="small muted">Родичи без надела, что живут войной и удачей. Двор знает о них по слухам и письмам.</p>
+           <div class="ring-block__head"><h2>${T('world.camps', 'Вольные отряды')}</h2><span class="small">${camps.length}</span></div>
+           <p class="small muted">${T('world.campsNote', 'Родичи без надела, что живут войной и удачей. Двор знает о них по слухам и письмам.')}</p>
            <div class="courts">${camps.map((p) => `<article class="court">
              <div class="court__top"><span class="court__name">${esc(nameOf(p))}</span><span class="court__dist">${esc(p.campAt || '')}</span></div>
-             <p class="court__what">${esc(p.campName ? `отряд «${p.campName}»` : 'вольный отряд')}</p>
-             <p class="court__meta">${esc(p.death ? `погиб в ${y0(p.death)}` : 'жив')}${p.branch ? ` · ${esc(p.branch)}` : ''}</p>
+             <p class="court__what">${esc(p.campName ? `${T('world.camp', 'отряд')} «${p.campName}»` : T('world.freeCamp', 'вольный отряд'))}</p>
+             <p class="court__meta">${esc(p.death ? `${T('world.diedIn', 'погиб в')} ${y0(p.death)}` : T('world.alive', 'жив'))}${p.branch ? ` · ${esc(p.branch)}` : ''}</p>
            </article>`).join('')}</div>
          </section>`
     : '';
@@ -60,17 +71,17 @@ function viewWorld() {
     : state.lens === 'political' && (houseLayer || familyLayer) ? 'political' : 'radius';
 
   const lensButtons = houseLayer || familyLayer || titlesLayer
-    ? `<div class="lens-switch" role="tablist" aria-label="Линза карты">
-           <button class="lens${lens === 'radius' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'radius'}" data-lens="radius">Радиус знания</button>
-           <button class="lens${lens === 'political' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'political'}" data-lens="political"${houseLayer || familyLayer ? '' : ' hidden'}>Политическая</button>
-           ${titlesLayer ? `<button class="lens${lens === 'titles' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'titles'}" data-lens="titles">Титулы</button>` : ''}
+    ? `<div class="lens-switch" role="tablist" aria-label="${T('world.lensAria', 'Линза карты')}">
+           <button class="lens${lens === 'radius' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'radius'}" data-lens="radius">${T('world.lens.radius', 'Радиус знания')}</button>
+           <button class="lens${lens === 'political' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'political'}" data-lens="political"${houseLayer || familyLayer ? '' : ' hidden'}>${T('world.lens.political', 'Политическая')}</button>
+           ${titlesLayer ? `<button class="lens${lens === 'titles' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${lens === 'titles'}" data-lens="titles">${T('world.lensTitles', 'Титулы')}</button>` : ''}
          </div>`
     : '';
 
   const layerButtons = lens === 'political' && familyLayer
-    ? `<div class="lens-switch lens-switch--layer" role="tablist" aria-label="Слой политической карты">
-           <button class="lens lens--small${layer === 'houses' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${layer === 'houses'}" data-layer="houses">По домам</button>
-           <button class="lens lens--small${layer === 'family' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${layer === 'family'}" data-layer="family">Земли рода</button>
+    ? `<div class="lens-switch lens-switch--layer" role="tablist" aria-label="${T('world.layerAria', 'Слой политической карты')}">
+           <button class="lens lens--small${layer === 'houses' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${layer === 'houses'}" data-layer="houses">${T('world.layer.houses', 'По домам')}</button>
+           <button class="lens lens--small${layer === 'family' ? ' is-on' : ''}" type="button" role="tab" aria-selected="${layer === 'family'}" data-layer="family">${T('world.layer.family', 'Земли рода')}</button>
          </div>`
     : '';
 
@@ -80,7 +91,7 @@ function viewWorld() {
 
   const houseLegend = layer === 'houses' && housesLegend.length
     ? `<figcaption class="map-legend map-legend--political"${lens === 'political' ? '' : ' hidden'}>
-           ${housesLegend.map((h) => `<span><i style="background:${h.color}"></i>${esc(h.house || 'дом без имени')}${h.player ? ' · ваш дом' : h.dynasty ? ' · ваша династия' : ''} · ${h.realms} ${plural(h.realms, 'держава', 'державы', 'держав')}</span>`).join('')}
+           ${housesLegend.map((h) => `<span><i style="background:${h.color}"></i>${esc(h.house || T('world.houseNoName', 'дом без имени'))}${h.player ? ` · ${T('world.yourHouse', 'ваш дом')}` : h.dynasty ? ' · ваша династия' : ''} · ${h.realms} ${plural(h.realms, 'держава', 'державы', 'держав')}</span>`).join('')}
            <span class="muted">${T('world.houseLayerNote', 'цвет — дом правителя; рубежи — по кольцу знания')}</span>
          </figcaption>`
     : '';
@@ -88,8 +99,8 @@ function viewWorld() {
   const familyLegend = layer === 'family' && groups.length
     ? `<figcaption class="map-legend map-legend--political"${lens === 'political' ? '' : ' hidden'}>
            ${groups.map((g) => `<div class="lens-house">
-              <p class="lens-house__head"><i style="background:${g.color}"></i><b>${esc(g.house || 'дом без имени')}</b><span class="lens-house__role">${ROLE_RU[g.role] || 'ветвь'}</span><span class="lens-house__sum">${g.counties} ${plural(g.counties, 'графство', 'графства', 'графств')}, ${g.rulers.length} ${plural(g.rulers.length, 'правитель', 'правителя', 'правителей')}</span></p>
-              <p class="lens-house__rulers">${g.rulers.map((r) => `<span><b class="lens-num">${r.num}</b>${esc(r.ruler || 'без имени')}<em>${r.counties}</em></span>`).join('')}</p>
+              <p class="lens-house__head"><i style="background:${g.color}"></i><b>${esc(g.house || T('world.houseNoName', 'дом без имени'))}</b><span class="lens-house__role">${ROLE_RU[g.role] || 'ветвь'}</span><span class="lens-house__sum">${g.counties} ${plural(g.counties, 'графство', 'графства', 'графств')}, ${g.rulers.length} ${plural(g.rulers.length, 'правитель', 'правителя', 'правителей')}</span></p>
+              <p class="lens-house__rulers">${g.rulers.map((r) => `<span><b class="lens-num">${r.num}</b>${esc(r.ruler || T('world.noName', 'без имени'))}<em>${r.counties}</em></span>`).join('')}</p>
             </div>`).join('')}
            <p class="lens-note">${T('world.foreignBorders', 'прочие державы — только границами')}</p>
          </figcaption>`
@@ -123,12 +134,12 @@ function viewWorld() {
     ? `<figure class="map-figure" id="mapFigure">
            ${lensButtons}${layerButtons}
            <div class="map-wrap" id="mapWrap">
-             <img id="worldMap" src="_data/${esc(currentFile)}" alt="Карта мира" loading="lazy" data-lens="${lens}" data-layer="${layer}" tabindex="0">
+             <img id="worldMap" src="_data/${esc(currentFile)}" alt="${T('world.mapAlt', 'Карта мира')}" loading="lazy" data-lens="${lens}" data-layer="${layer}" tabindex="0">
              <div class="map-tip" id="mapTip" hidden></div>
-             <div class="map-zoom" role="group" aria-label="Масштаб карты">
-               <button type="button" data-zoom="in" aria-label="Приблизить">+</button>
-               <button type="button" data-zoom="out" aria-label="Отдалить">−</button>
-               <button type="button" data-zoom="reset" aria-label="Сбросить масштаб">Сброс</button>
+             <div class="map-zoom" role="group" aria-label="${T('world.zoomAria', 'Масштаб карты')}">
+               <button type="button" data-zoom="in" aria-label="${T('world.zoomIn', 'Приблизить')}">+</button>
+               <button type="button" data-zoom="out" aria-label="${T('world.zoomOut', 'Отдалить')}">−</button>
+               <button type="button" data-zoom="reset" aria-label="${T('world.zoomReset', 'Сбросить масштаб')}">${T('world.zoomResetShort', 'Сброс')}</button>
              </div>
            </div>
            <figcaption class="map-legend"${lens !== 'radius' ? ' hidden' : ''}>
@@ -145,11 +156,11 @@ function viewWorld() {
 
   return `
       <div class="page-head"><h1>${T('world.title', 'Мир')}</h1>
-        <p>Что род знает о других дворах. Чем дальше — тем меньше: имя, потом только титул, потом молва.</p></div>
+        <p>${T('world.subtitle', 'Что род знает о других дворах. Чем дальше — тем меньше: имя, потом только титул, потом молва.')}</p></div>
       ${map}
       ${campsBlock}
       ${blocks}
-      <div class="rumor"><b>Молва: ${rumors} держав.</b> За третьим кольцом род знает только то, что где-то есть государи. Их имена не записываются — это не ошибка летописи, а её честность.</div>`;
+      <div class="rumor"><b>${T('world.rumorTitle', 'Молва')}: ${rumors} ${T('world.rumorRealms', 'держав')}.</b> ${T('world.rumorNote', 'За третьим кольцом род знает только то, что где-то есть государи. Их имена не записываются — это не ошибка летописи, а её честность.')}</div>`;
 }
 /* ---------- карта: наведение ---------- */
 
@@ -174,7 +185,7 @@ function loadTitlesCard() {
   return titlesLoading;
 }
 
-const MAP_TIER_RU = { c: 'графство', d: 'герцогство', k: 'королевство', e: 'империя' };
+const MAP_TIER_RU = () => ({ c: T('world.tierCounty', 'графство'), d: T('world.tierDuchy', 'герцогство'), k: T('world.tierKingdom', 'королевство'), e: T('world.tierEmpire', 'империя') });
 const tierOfKey = (key) => (key ? (key[0] === 'c' ? 'c' : key[0] === 'd' ? 'd' : key[0] === 'k' ? 'k' : 'e') : null);
 
 function setupMap() {
@@ -334,13 +345,13 @@ function setupMap() {
     const owner = title.owner ? ix.people.get(title.owner) : null;
     const ownerName = owner ? nameOf(owner) : (ix.names.get(title.owner) || '');
     const chain = title.chain.length
-      ? title.chain.map((t) => `${MAP_TIER_RU[tierOfKey(t.key)] || 'титул'} — ${esc(t.name)}`).join(' · ')
-      : 'старших титулов нет: вольное графство';
+      ? title.chain.map((t) => `${(MAP_TIER_RU())[tierOfKey(t.key)] || T('world.tierFallback', 'титул')} — ${esc(t.name)}`).join(' · ')
+      : T('world.noSeniors', 'старших титулов нет: вольное графство');
     detail.hidden = false;
     detail.innerHTML = `<b>${esc(title.name)}</b> <span class="small muted">${T('world.titleCounty', 'графство')}</span>
         <p class="small">${chain}</p>
-        <p class="small muted">${ownerName ? `Государь — ${esc(ownerName)}${owner && owner.house ? `, дом ${esc(owner.house)}` : ''}.` : 'Держатель неизвестен.'}</p>
-        <p class="small"><a href="#chronicle" data-title-link="${esc(title.key)}">Смотреть хронику по этому титулу</a></p>`;
+        <p class="small muted">${ownerName ? `${T('world.rulerIs', 'Государь —')} ${esc(ownerName)}${owner && owner.house ? `, ${T('world.houseShort', 'дом')} ${esc(owner.house)}` : ''}.` : T('world.holderUnknown', 'Держатель неизвестен.')}</p>
+        <p class="small"><a href="#chronicle" data-title-link="${esc(title.key)}">${T('world.openChronicle', 'Смотреть хронику по этому титулу')}</a></p>`;
     const link = detail.querySelector('[data-title-link]');
     if (link) {
       link.addEventListener('click', (ev2) => {
@@ -363,7 +374,7 @@ function setupMap() {
       img.style.cursor = 'pointer';
       const rect = img.getBoundingClientRect();
       const chain = (card.chain?.[index - 1] || []).map((k) => card.names?.[k] || k);
-      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || 'вольное графство')}</span>`;
+      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || T('world.freeCounty', 'вольное графство'))}</span>`;
       tip.hidden = false;
       const left = Math.max(8, Math.min(ev.clientX - rect.left, rect.width - 190));
       tip.style.left = left + 'px';
@@ -374,7 +385,7 @@ function setupMap() {
     if (!realm) { tip.hidden = true; img.style.cursor = 'default'; return; }
     img.style.cursor = 'pointer';
     const rect = img.getBoundingClientRect();
-    const ring = ringLabel(realm.ring) || 'молва';
+    const ring = ringLabel(realm.ring) || T('world.ring4', 'молва');
     tip.innerHTML = `<b>${esc(realm.name)}</b><span>${ring}${realm.distance != null ? ` · ${realm.distance} px` : ''}${realm.direction ? ` · ${esc(realm.direction)}` : ''}</span>`;
     tip.hidden = false;
     const left = Math.max(8, Math.min(ev.clientX - rect.left, rect.width - 170));
@@ -394,17 +405,17 @@ function setupMap() {
     }
     const realm = realmAt(ev);
     if (!realm) { detail.hidden = true; return; }
-    const ring = ringLabel(realm.ring) || 'молва';
-    const ruler = realm.ring <= 2 && realm.ruler ? `Государь — ${esc(realm.ruler)}${realm.house && !realm.house.startsWith('House') ? `, дом ${esc(realm.house)}` : ''}.` : '';
+    const ring = ringLabel(realm.ring) || T('world.ring4', 'молва');
+    const ruler = realm.ring <= 2 && realm.ruler ? `${T('world.rulerIs', 'Государь —')} ${esc(realm.ruler)}${realm.house && !realm.house.startsWith('House') ? `, ${T('world.houseShort', 'дом')} ${esc(realm.house)}` : ''}.` : '';
     const knows = realm.ring <= 1
-      ? 'Род знает о нём подробно: имя, дом, годы, владения.'
+      ? T('world.knownDetailed', 'Род знает о нём подробно: имя, дом, годы, владения.')
       : realm.ring === 2
-        ? 'Имя и титул известны, остальное — нет.'
+        ? T('world.knownNameTitle', 'Имя и титул известны, остальное — нет.')
         : realm.ring === 3
-          ? 'Только титул; имени не записали.'
-          : 'Только молва: где-то там есть государь.';
+          ? T('world.knownTitleOnly', 'Только титул; имени не записали.')
+          : T('world.knownHearsay', 'Только молва: где-то там есть государь.');
     detail.hidden = false;
-    detail.innerHTML = `<b>${esc(realm.name)}</b> <span class="small muted">${ring}${realm.size ? ` · владений ${realm.size}` : ''}</span>
+    detail.innerHTML = `<b>${esc(realm.name)}</b> <span class="small muted">${ring}${realm.size ? ` · ${T('world.holdings', 'владений')} ${realm.size}` : ''}</span>
         <p class="small">${knows}${ruler ? ` ${ruler}` : ''}</p>`;
   });
 }

@@ -6,7 +6,7 @@ A checklist: what is ready and what to do by hand when publishing.
 ## Что готово
 
 - ветка `main`, рабочее дерево чистое; авторы коммитов — ваш аккаунт;
-- тег `0.1.1-alpha`;
+- тег `0.5.0-alpha`;
 - `VERSION`, `CHANGELOG.md`, `RELEASE_NOTES.md`;
 - README на двух языках, `CONTRIBUTING.md`, шаблон issue;
 - CI: `.github/workflows/tests.yml` — гоняет `npm test` на каждый push;
@@ -30,7 +30,7 @@ gh repo create ck3-chronicle --public --source . --remote origin --push
 cd ck3-chronicle
 git remote add origin https://github.com/agapovpavel387-code/ck3-chronicle.git
 git push -u origin main --force-with-lease
-git push origin 0.1.1-alpha
+git push origin 0.5.0-alpha
 ```
 
 ## Шаг 3. Описание и темы репозитория
@@ -48,10 +48,10 @@ javascript vanilla-js local-first offline rust-extractor game-tools history-visu
 
 ## Шаг 4. Release
 
-Тег `0.1.1-alpha` → **Draft a new release** → выбрать тег → заголовок `0.1.1-alpha` →
+Тег `0.5.0-alpha` → **Draft a new release** → выбрать тег → заголовок `0.5.0-alpha` →
 в описание вставить раздел из `RELEASE_NOTES.md` → приложить два архива:
 
-- `chronicle-of-the-house-0.1.1-alpha.zip` — приложение;
+- `chronicle-of-the-house-0.5.0-alpha.zip` — приложение;
 - `ck3_history_extractor-2.4.7-ck3-1.20-win64.zip` — экстрактор с патчем 1.20 (без него импорт не работает, в git он не входит).
 
 ## Шаг 5. Проверка после публикации

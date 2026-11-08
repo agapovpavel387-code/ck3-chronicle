@@ -1,6 +1,6 @@
 # Chronicle of the House
 
-**Alpha 0.1.0** · Crusader Kings III 1.20.x
+**Alpha 0.5.0** · Crusader Kings III 1.20.x
 
 ![status](https://img.shields.io/badge/status-alpha-orange)
 ![CK3](https://img.shields.io/badge/Crusader%20Kings%20III-1.20.x-6b5b45)
@@ -40,7 +40,7 @@ Other ways to start:
 | `node tools/serve.js --port 9000` | custom port |
 | open `app/index.html` directly | works, because the demo world is also stored as `world.js` |
 
-The demo world is a 995 campaign of the House of Gondärid: 134 realms in view, 23 829 events, 21 dynasty members holding land.
+The world in `app/_data` is a 917 campaign of the House of Zhu: 260 realms in view (of 741), 22 651 events, 11 kin in the dynasty, 11 378 events with a cause. Realm and personal culture are read; faith is not: a 1.20 save keeps faith definitions but no link to people or counties, and the dossier says so plainly. Your own world is built by the same command (see below).
 
 ## Import your own save
 
@@ -94,7 +94,7 @@ The chronicle and dossier texts stay in the language of the save: they are quote
 
 ## What is inside
 
-Five screens:
+Six screens:
 
 - **House** — the family as an indented outline: one line per person, indentation per generation, collapsible. Cadet lines are marked, rulers are labelled with what they held. A canvas tree with pan and zoom is the second mode.
 - **World** — what the house knows about other courts. Two lenses: *radius of knowledge* (the further away, the less is known) and *political*.

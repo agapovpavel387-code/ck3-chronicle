@@ -12,8 +12,8 @@ function buildDoc() {
   const s = state.settings;
 
   if (!chapters.length) {
-    doc.innerHTML = `<div class="empty-state"><h3>В этих годах записей нет</h3>
-        <p>Расширьте период или включите молву — тогда дальние вести тоже попадут в летопись.</p></div>`;
+    doc.innerHTML = `<div class="empty-state"><h3>${T('book.emptyTitle', 'В этих годах записей нет')}</h3>
+        <p>${T('book.emptyNote', 'Расширьте период или включите молву — тогда дальние вести тоже попадут в летопись.')}</p></div>`;
     return;
   }
 
@@ -31,13 +31,13 @@ function buildDoc() {
       })()}
     </header>
     <details class="source-note">
-      <summary>О источнике</summary>
+      <summary>${T('book.aboutSource', 'О источнике')}</summary>
       <p>Хронику ведёт двор дома ${esc(meta.player.house || '')}. Своё он знает доподлинно, о соседях пишет по вестям, дальнее для него — молва.</p>
       <p>Запись года идёт тремя слоями: <b>в роду</b> — что случилось с семьёй, <b>при дворе и рядом</b> — соседи и войны, <b>издали</b> — счёт вестей за дальними землями.</p>
       <p>Годы без записей — не пропуск: значит, до двора не дошло ничего, что стоило бы строки.</p>
     </details>
     <details class="source-note">
-      <summary>Как читать</summary>
+      <summary>${T('book.howToRead', 'Как читать')}</summary>
       <p><b>Держал</b> — титул был у человека на тот год. <b>Принял</b> — власть перешла к нему. <b>Потерял</b> — титул ушёл другому, и назван тот, к кому он отошёл.</p>
       <p><b>Владения</b> — графства и герцогства, которыми человек владеет по сейву. <b>Без земли</b> — родич без титула; если он живёт войной, стоит пометка «вольный отряд».</p>
       <p><b>Ветви.</b> Старший дом — тот, от которого пошёл род; кадетские — младшие дома той же династии; ваш дом — тот, за который играете. Главный титул дома может держать не глава рода — тогда в шапке досье сказано, кто именно.</p>
@@ -93,7 +93,7 @@ function buildDoc() {
         if (prev == null || chapter.year - prev <= 1) return renderYear(chapter);
         const from = prev + 1;
         const to = chapter.year - 1;
-        const label = from === to ? `Год ${from}` : `Годы ${from}—${to}`;
+        const label = from === to ? `${T('book.year', 'Год')} ${from}` : `${T('book.years', 'Годы')} ${from}—${to}`;
         return `<p class="quiet">${label}: тишина, записей нет.</p>${renderYear(chapter)}`;
       })
       .join('');
@@ -140,8 +140,8 @@ function viewBook() {
         .join('; ');
       return `<article class="gen">
           <h3>${T('tree.generation', 'Поколение')} ${g.gen + 1}</h3>
-          <p class="small muted">${g.from || '?'}—${g.to || '…'} · ${g.members} ${g.members === 1 ? 'человек' : 'человек'} · ${esc(g.names.join(', '))}</p>
-          ${deaths ? `<p>${esc(deaths)}.</p>` : '<p class="muted">Сведений о смертях не сохранилось.</p>'}
+          <p class="small muted">${g.from || '?'}—${g.to || '…'} · ${g.members} ${plural(g.members, 'человек', 'человека', 'человек', 'person', 'people')} · ${esc(g.names.join(', '))}</p>
+          ${deaths ? `<p>${esc(deaths)}.</p>` : `<p class="muted">${T('book.noDeaths', 'Сведений о смертях не сохранилось.')}</p>`}
           ${camps.length ? `<p class="small muted">Вольные отряды: ${esc(camps.join('; '))}.</p>` : ''}
         </article>`;
     })
@@ -149,22 +149,22 @@ function viewBook() {
 
   return `
       <div class="page-head"><h1>${T('book.title', 'Свод')}</h1>
-        <p>Династия по поколениям: кто жил, когда и чем закончил. Это оглавление будущей книги.</p></div>
+        <p>${T('book.lead', 'Династия по поколениям: кто жил, когда и чем закончил. Это оглавление будущей книги.')}</p></div>
       <div id="bookRoot">
         ${(state.world.lineage?.lines || []).length
-          ? `<section class="gen"><h3>Линии рода</h3><ol class="gen-list">${state.world.lineage.lines.map((line) => `<li><span class="branch-dot" style="background:${lineColor(line)}"></span><b>${esc(line.founder)}</b> <span class="small muted">${esc(lineKind(line.kind) || 'линия')} · ${line.size} ${plural(line.size, 'человек', 'человека', 'человек')}${line.birth ? ` · с ${esc(y0(line.birth))}` : ''}</span></li>`).join('')}</ol></section>`
+          ? `<section class="gen"><h3>${T('tree.lines', 'Линии рода')}</h3><ol class="gen-list">${state.world.lineage.lines.map((line) => `<li><span class="branch-dot" style="background:${lineColor(line)}"></span><b>${esc(line.founder)}</b> <span class="small muted">${esc(lineKind(line.kind) || T('tree.line', 'линия'))} · ${line.size} ${plural(line.size, 'человек', 'человека', 'человек', 'person', 'people')}${line.birth ? ` · с ${esc(y0(line.birth))}` : ''}</span></li>`).join('')}</ol></section>`
           : ''}
         <div class="doc-actions" style="margin:0 0 18px">
           <button class="btn btn--ghost" type="button" id="downloadBook">${T('book.download', 'Скачать свод .md')}</button>
         </div>
-        ${blocks || '<div class="empty-state"><h3>Поколений не видно</h3><p>В этом мире род слишком короток, чтобы делить его на поколения.</p></div>'}
+        ${blocks || `<div class="empty-state"><h3>${T('book.noGens', 'Поколений не видно')}</h3><p>${T('book.noGensNote', 'В этом мире род слишком короток, чтобы делить его на поколения')}.</p></div>`}
       </div>`;
 }
 function bookText() {
   const { meta } = state.world;
   const out = [`# Свод дома ${meta.player.house || ''}`, '', `${meta.date}`, ''];
   for (const g of meta.generations || []) {
-    out.push(`## Поколение ${g.gen + 1}`, `${g.from || '?'}—${g.to || '…'}, ${g.members} человек: ${g.names.join(', ')}`, '');
+    out.push(`## Поколение ${g.gen + 1}`, `${g.from || '?'}—${g.to || '…'}, ${g.members} ${plural(g.members, 'человек', 'человека', 'человек', 'person', 'people')}: ${g.names.join(', ')}`, '');
   }
   return out.join('\n');
 }

@@ -185,10 +185,10 @@ function dossierText() {
 function viewDossier() {
   return `
       <div class="page-head"><h1>${T('dossier.title', 'Досье')}</h1>
-        <p>Готовый пакет для рассказчика: династия, державы, вера и культура, владения и события периода.</p></div>
+        <p>${T('dossier.lead', 'Готовый пакет для рассказчика: династия, державы, вера и культура, владения и события периода.')}</p></div>
       <div class="doc-actions" style="margin:0 0 16px">
         <button class="btn" type="button" id="copyDossier">${T('dossier.copy', 'Скопировать досье')}</button>
-        <button class="btn btn--ghost" type="button" id="downloadDossier">Скачать .md</button>
+        <button class="btn btn--ghost" type="button" id="downloadDossier">${T('common.downloadMd', 'Скачать .md')}</button>
       </div>
       <pre class="dossier" id="dossierText">${esc(dossierText())}</pre>`;
 }

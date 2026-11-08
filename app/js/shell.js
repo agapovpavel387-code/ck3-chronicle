@@ -181,30 +181,31 @@ function viewImport() {
 function viewData() {
   const { meta } = state.world;
   return `
-      <div class="page-head"><h1>${T('data.title', 'Данные')}</h1><p>Откуда взят мир и как пересобрать его для другого сейва.</p></div>
+      <div class="page-head"><h1>${T('data.title', 'Данные')}</h1><p>${T('data.lead', 'Откуда взят мир и как пересобрать его для другого сейва.')}</p></div>
       <div class="grid grid--2">
         <section class="card">
-          <div class="eyebrow">Текущий мир</div>
-          <div style="font-family:var(--font-display);font-size:var(--step-3);margin:8px 0 4px">${esc(dateRu(meta.date))}</div>
-          <p class="small muted">Файл: <code>${esc(meta.source)}</code></p>
-          <div class="kv"><span>Держав</span><b class="num">${meta.counts.realms}</b></div>
-          <div class="kv"><span>В поле зрения</span><b class="num">${meta.counts.known}</b></div>
-          <div class="kv"><span>Династия</span><b class="num">${meta.counts.dynasty}</b></div>
-          <div class="kv"><span>В дереве</span><b class="num">${meta.counts.people}</b></div>
-          <div class="kv"><span>Событий</span><b class="num">${meta.counts.events}</b></div>
-          <p class="small muted" style="margin-top:10px">В сборке один мир. Своё сохранение подключается так: закройте приложение, запустите <code>import.cmd</code> (Windows) или <code>./import.sh</code>, укажите файл <code>.ck3</code> и папку игры — мир и карта соберутся сами.</p>
-          <p class="small muted">Карты в сейве нет: игра хранит её отдельно, в папке <code>game/map_data</code>. Поэтому импортёр и спрашивает папку игры — без неё мир соберётся, но останется только «Карта словами».</p>
+          <div class="eyebrow">${T('data.current', 'Текущий мир')}</div>
+          <div style="font-family:var(--font-display);font-size:var(--step-3);margin:8px 0 4px">${esc(dateText(meta.date))}</div>
+          <p class="small muted">${T('data.file', 'Файл')}: <code>${esc(meta.source)}</code></p>
+          <div class="kv"><span>${T('data.realms', 'Держав')}</span><b class="num">${meta.counts.realms}</b></div>
+          <div class="kv"><span>${T('data.known', 'В поле зрения')}</span><b class="num">${meta.counts.known}</b></div>
+          <div class="kv"><span>${T('data.dynasty', 'Династия')}</span><b class="num">${meta.counts.dynasty}</b></div>
+          <div class="kv"><span>${T('data.people', 'В дереве')}</span><b class="num">${meta.counts.people}</b></div>
+          <div class="kv"><span>${T('data.events', 'Событий')}</span><b class="num">${meta.counts.events}</b></div>
+          <p class="small muted" style="margin-top:10px">${T('data.importNote', 'Своё сохранение подключается на экране «Своё сохранение»: выберите файл .ck3 и папку игры — мир и карта соберутся сами.')}</p>
+          <p><a class="btn btn--ghost btn--small" href="#import" data-nav="import">${T('data.toImport', 'Открыть импорт')}</a></p>
+          <p class="small muted">${T('data.mapNote', 'Карты в сейве нет: игра хранит её отдельно, в папке game/map_data. Поэтому импортёр и спрашивает папку игры — без неё мир соберётся, но останется только «Карта словами».')}</p>
         </section>
         <section class="card">
-          <div class="eyebrow">Как пересобрать</div>
+          <div class="eyebrow">${T('data.how', 'Как пересобрать')}</div>
           <ol class="facts" style="padding-left:18px;margin-top:8px">
-            <li>Дамп сейва экстрактором:
+            <li>${T('data.step1', 'Дамп сейва экстрактором')}:
               <code class="code-block">ck3_history_extractor.exe "сейв.ck3" -g "…\\Crusader Kings III\\game" -l russian -o out -n --dump out\\gamestate.json</code></li>
-            <li>Мир и карта:
+            <li>${T('data.step2', 'Мир и карта')}:
               <code class="code-block">python tools/build_world.py --dump out\\gamestate.json -o app\\_data\\world.json --map app\\_data\\world-map.png</code></li>
-            <li>Обновите страницу.</li>
+            <li>${T('data.step3', 'Обновите страницу.')}</li>
           </ol>
-          <p class="small muted" style="margin-top:10px">Нужны кэши карты: <code>knowledge_pilot.py map</code> и <code>adjacency</code>.</p>
+          <p class="small muted" style="margin-top:10px">${T('data.cacheNote', 'Нужны кэши карты: knowledge_pilot.py map и adjacency.')}</p>
         </section>
       </div>`;
 }

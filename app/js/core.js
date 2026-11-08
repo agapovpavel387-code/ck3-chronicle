@@ -82,7 +82,9 @@ function ageAt(p, date) {
   const age = b && d ? d - b : null;
   return age !== null && age >= 0 && age < 110 ? age : null;
 }
-function plural(n, one, few, many) {
+function plural(n, one, few, many, enOne, enMany) {
+  const lang = window.currentLang ? window.currentLang() : 'ru';
+  if (lang === 'en' && enOne) return n === 1 ? enOne : (enMany || `${enOne}s`);
   const tail = n % 100, last = n % 10;
   if (tail >= 11 && tail <= 14) return many;
   if (last === 1) return one;
@@ -104,6 +106,16 @@ const dateRu = (d) => {
   const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   return `${day} ${months[m - 1]} ${y}`;
 };
+const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function dateText(d) {
+  const lang = window.currentLang ? window.currentLang() : 'ru';
+  if (lang !== 'en') return dateRu(d);
+  const y = yearOf(d);
+  if (!y) return '';
+  const [, m, day] = String(d).split('-').map(Number);
+  if (!m || !day) return `${y}`;
+  return `${day} ${MONTHS_EN[m - 1]} ${y}`;
+}
 const died = (p) => (p && p.female ? 'умерла' : 'умер');
 const born = (p) => (p && p.female ? 'родилась' : 'родился');
 function traitsPhrase(p) {

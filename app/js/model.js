@@ -129,7 +129,13 @@ function relationTo(person) {
 /* ---------- мир ---------- */
 
 function knownLine(r) {
-  if (r.ring <= 1) return [r.ruler ? nameOf({ name: r.ruler, nick: r.nick }) : '', r.house && !String(r.house).startsWith('House ') ? 'дом ' + r.house : '', r.name].filter(Boolean).join(', ');
-  if (r.ring === 2) return `${r.ruler || 'государь без имени'}, ${r.name}`;
-  return `${r.name}: государь не назван`;
+  if (r.ring <= 1) {
+    return [
+      r.ruler ? nameOf({ name: r.ruler, nick: r.nick }) : '',
+      r.house && !String(r.house).startsWith('House ') ? `${T('world.houseShort', 'дом')} ${r.house}` : '',
+      r.name,
+    ].filter(Boolean).join(', ');
+  }
+  if (r.ring === 2) return `${r.ruler || T('world.rulerNoName', 'государь без имени')}, ${r.name}`;
+  return `${r.name}: ${T('world.rulerUnnamed', 'государь не назван')}`;
 }

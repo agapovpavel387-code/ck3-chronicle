@@ -2,7 +2,7 @@
 
 **Что это.** Локальное приложение, которое читает сохранение Crusader Kings III и показывает мир глазами одной семьи: что до рода дошло — своим знанием, вестями и молвой. Ничего не отправляется в сеть, аккаунт не нужен.
 
-**Совместимость.** Crusader Kings III 1.20.x, формат сейва 1.20. Проверено на сохранении 995 года с русской локализацией. Более ранние форматы (1.19 и ниже) разбираются экстрактором, но приложение проверено на 1.20.
+**Совместимость.** Crusader Kings III 1.20.x, формат сейва 1.20. Проверено на сохранении 917 года с русской локализацией. Более ранние форматы (1.19 и ниже) разбираются экстрактором, но приложение проверено на 1.20.
 
 ## Как запустить
 
@@ -52,7 +52,7 @@
 
 **What it is.** A local app that reads a Crusader Kings III save and shows the world through one family's eyes: what actually reached the house — its own records, messages, and hearsay. Nothing is sent over the network, no account needed.
 
-**Compatibility.** Crusader Kings III 1.20.x, save format 1.20. Tested on a 995 save with the Russian localization. Older formats (1.19 and below) are handled by the extractor, but the app is verified on 1.20.
+**Compatibility.** Crusader Kings III 1.20.x, save format 1.20. Tested on a 917 save with the Russian localization. Older formats (1.19 and below) are handled by the extractor, but the app is verified on 1.20.
 
 ## How to start
 

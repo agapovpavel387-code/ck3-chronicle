@@ -27,6 +27,8 @@ const dom = new JSDOM(html, {
   pretendToBeVisual: true,
   virtualConsole: vc,
   beforeParse(window) {
+    // Тесты проверяют русский интерфейс: в jsdom язык браузера английский.
+    window.localStorage.setItem('chronicle.lang', 'ru');
     window.fetch = async (url) => {
       if (String(url).includes('titles-map')) return { ok: true, json: async () => titleCard, status: 200 };
       return { ok: true, json: async () => world, status: 200 };

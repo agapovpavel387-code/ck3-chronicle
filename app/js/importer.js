@@ -18,35 +18,35 @@ const IMPORTER_CSS = `
 .import__status.is-error { color: var(--accent); }
 `;
 function importerMarkup() {
-return `<div class="page-head"><h1>Своё сохранение</h1>
-      <p>Выберите файл <code>.ck3</code> — утилита сама снимет дамп, соберёт мир и карту, после чего хроника откроется заново.</p></div>
+return `<div class="page-head"><h1>${T('import.title', 'Своё сохранение')}</h1>
+      <p>${T('import.lead', 'Выберите файл .ck3 — утилита сама снимет дамп, соберёт мир и карту, после чего хроника откроется заново.')}</p></div>
     <section class="card import" id="importPanel">
-      <p class="import__hint" id="importEnv">Ищу сохранения…</p>
+      <p class="import__hint" id="importEnv">${T('import.searching', 'Ищу сохранения…')}</p>
       <div class="import__row">
-        <label>Сохранение<select id="importSave"><option value="">— выберите файл —</option></select></label>
-        <button class="btn btn--ghost btn--small" type="button" id="importRefresh">Обновить список</button>
+        <label>${T('import.save', 'Сохранение')}<select id="importSave"><option value="">${T('import.choose', '— выберите файл —')}</option></select></label>
+        <button class="btn btn--ghost btn--small" type="button" id="importRefresh">${T('import.refresh', 'Обновить список')}</button>
       </div>
       <div class="import__row">
-        <label>Папка игры (для карты)<input type="text" id="importGame" placeholder="…/Crusader Kings III/game"></label>
+        <label>${T('import.game', 'Папка игры (для карты)')}<input type="text" id="importGame" placeholder="…/Crusader Kings III/game"></label>
       </div>
       <div class="import__row">
-        <label>Экстрактор (если не найден)<input type="text" id="importExtractor" placeholder="…/ck3_history_extractor.exe"></label>
+        <label>${T('import.extractor', 'Экстрактор (если не найден)')}<input type="text" id="importExtractor" placeholder="…/ck3_history_extractor.exe"></label>
       </div>
       <div class="import__row">
-        <label>Язык имён<select id="importLang">
-          <option value="russian">русский</option>
+        <label>${T('import.lang', 'Язык имён')}<select id="importLang">
+          <option value="russian">${T('import.langRu', 'русский')}</option>
           <option value="english">english</option>
           <option value="french">français</option>
           <option value="german">deutsch</option>
           <option value="spanish">español</option>
         </select></label>
-        <button class="btn" type="button" id="importStart">Импортировать</button>
-        <button class="btn btn--ghost btn--small" type="button" id="importCancel" hidden>Остановить</button>
+        <button class="btn" type="button" id="importStart">${T('import.start', 'Импортировать')}</button>
+        <button class="btn btn--ghost btn--small" type="button" id="importCancel" hidden>${T('import.cancel', 'Остановить')}</button>
       </div>
-      <p class="import__hint">Карты в сейве нет: игра хранит её в папке <code>game/map_data</code>. Если папка уже известна, поле заполнится само.</p>
+      <p class="import__hint">${T('import.mapNote', 'Карты в сейве нет: игра хранит её в папке game/map_data. Если папка уже известна, поле заполнится само.')}</p>
       <div class="import__deps" id="importDeps" hidden>
-        <p class="import__hint">Для конвертации нужны Python-пакеты <code>ijson</code>, <code>numpy</code>, <code>pillow</code>.</p>
-        <button class="btn btn--ghost btn--small" type="button" id="importInstall">Установить зависимости</button>
+        <p class="import__hint">${T('import.deps', 'Для конвертации нужны Python-пакеты ijson, numpy, pillow.')}</p>
+        <button class="btn btn--ghost btn--small" type="button" id="importInstall">${T('import.install', 'Установить зависимости')}</button>
         <pre class="import__log" id="importDepsLog" hidden></pre>
       </div>
       <div class="import__status" id="importStatus" hidden></div>
@@ -88,7 +88,7 @@ const showStatus = (text, isError) => {
 const loadSaves = async () => {
   try {
     const data = await api('/api/saves');
-    saveSelect.innerHTML = '<option value="">— выберите файл —</option>';
+    saveSelect.innerHTML = `<option value="">${T('import.choose', '— выберите файл —')}</option>`;
     for (const save of data.saves || []) {
       const option = document.createElement('option');
       option.value = save.path;
@@ -98,10 +98,10 @@ const loadSaves = async () => {
       saveSelect.append(option);
     }
     envNote.textContent = data.saves?.length
-      ? `Найдено сохранений: ${data.saves.length}. Папка: ${data.dir}`
-      : `Сохранений не найдено в ${data.dir}. Укажите файл вручную, положив его в папку игры.`;
+      ? `${T('import.found', 'Найдено сохранений')}: ${data.saves.length}. ${T('import.folder', 'Папка')}: ${data.dir}`
+      : `${T('import.none', 'Сохранений не найдено в')} ${data.dir}. ${T('import.noneHint', 'Укажите файл вручную, положив его в папку игры.')}`;
   } catch (error) {
-    envNote.textContent = 'Список сохранений недоступен: приложение открыто не через start.cmd.';
+    envNote.textContent = T('import.noList', 'Список сохранений недоступен: приложение открыто не через start.cmd.');
   }
 };
 

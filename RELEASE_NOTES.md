@@ -1,4 +1,4 @@
-# Хроника рода 0.1.1-alpha — заметки к выпуску
+# Хроника рода 0.4.0-alpha — заметки к выпуску
 
 **Что это.** Локальное приложение, которое читает сохранение Crusader Kings III и показывает мир глазами одной семьи: что до рода дошло — своим знанием, вестями и молвой. Ничего не отправляется в сеть, аккаунт не нужен.
 
@@ -24,17 +24,21 @@
 
 ## Что внутри альфы
 
-- пять экранов: Род, Мир, Хроника, Свод, Досье;
+- шесть экранов: Род, Мир, Хроника, Свод, Досье и «Своё сохранение»;
 - род конспектом по слоям и полотном с панорамой;
 - две линзы карты, у политической два слоя: по домам и земли рода;
 - хроника главами, тремя слоями и нитями войн и распрь;
+- **титулы:** у смены власти есть причина (по наследству, пожалован, отобран, завоёван…), у потери — имя титула и новый держатель;
+- **войны:** повод из локализации игры и цель войны, исход по истории титула;
+- **смерти:** причина из данных игры без разметки («во сне», «от старости», «от чахотки»);
 - импорт своего сохранения из панели, с журналом и отменой;
 - интерфейс на русском и английском: переключатель RU/EN, выбор запоминается.
 
 ## Чего в альфе нет
 
 - **Веры.** Сейв 1.20 хранит определения вер, но не привязку к людям и графствам. Приложение пишет об этом прямо, а не угадывает.
-- **Причин событий.** «Попал в темницу», «потерял титул» — без «почему»: сейв мотивов не хранит.
+- **Мотивов у части событий.** Причина смены титула известна там, где её записала память персонажа; у смен до начала партии её нет.
+- **Завершённых войн.** Игра хранит только идущие; причина у давно закончившихся есть только там, где осталась память.
 - **Имён за третьим кольцом.** Там известна только держава: это кольцо молвы, а не пробел летописца.
 - **Полной генеалогии.** Записи о рождениях есть там, где о них дошла весть; в дереве детей может быть больше.
 
@@ -44,7 +48,7 @@
 
 ---
 
-# Chronicle of the House 0.1.1-alpha — release notes
+# Chronicle of the House 0.4.0-alpha — release notes
 
 **What it is.** A local app that reads a Crusader Kings III save and shows the world through one family's eyes: what actually reached the house — its own records, messages, and hearsay. Nothing is sent over the network, no account needed.
 
@@ -60,17 +64,21 @@ Either Node.js (recommended, no dependencies) or Python 3 is enough. Importing y
 
 ## What is in this alpha
 
-- five screens: House, World, Chronicle, Compendium, Dossier;
+- six screens: House, World, Chronicle, Compendium, Dossier, and "Your save";
 - the house as a layered outline and as a pannable canvas;
 - two map lenses, the political one with two layers: by house and family lands;
 - a chronicle in chapters, three layers per year, with threads for wars and feuds;
+- **titles:** every change of power names its cause (inherited, granted, revoked, conquered…), every loss names the title and the new holder;
+- **wars:** the casus belli from the game's own localization and the war goal;
+- **deaths:** the cause as the game recorded it;
 - importing your own save from the page, with a live log and a stop button;
 - the interface in Russian and English, with a RU/EN switch that remembers the choice.
 
 ## What is not here
 
 - **Faith.** The 1.20 save keeps faith definitions but no link to people or counties. The app says so instead of guessing.
-- **Causes.** "Imprisoned", "lost a title" — without "why": the save does not record motives.
+- **Motives for every event.** A title change has a cause where a character's memory recorded it; changes before the campaign have none.
+- **Finished wars.** The game stores only ongoing ones; a cause for long-finished wars exists only where a memory survived.
 - **Names beyond the third ring.** Only the realm is known there: that is the ring of hearsay, not a gap in the chronicler's work.
 - **Complete genealogy.** Births are recorded where a message arrived; the tree may hold more children.
 

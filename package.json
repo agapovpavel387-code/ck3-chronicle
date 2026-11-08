@@ -1,11 +1,11 @@
-{
+﻿{
   "name": "ck3-chronicle",
-  "version": "0.1.1-alpha",
+  "version": "0.4.0-alpha",
   "private": true,
   "description": "Chronicle of the House: a local app over a Crusader Kings III save",
   "license": "MIT",
   "scripts": {
-    "test": "node tools/check_app.js app && node tools/check_tree.js app && node tools/check_chronicle.js app && node tools/check_lens.js app",
+    "test": "node tools/check_app.js app && node tools/check_tree.js app && node tools/check_chronicle.js app && node tools/check_lens.js app && python tools/titles.py --selftest && python tools/save_reader.py --selftest && python tools/check_titles.py --world app/_data/world.json --titles-map app/_data/titles-map.json && python tools/title_map.py --selftest",
     "start": "node tools/serve.js --open",
     "import": "node tools/serve.js --open",
     "doctor": "python tools/doctor.py"

@@ -158,6 +158,8 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
   click(doc.querySelector('[data-nav="data"]'));
   await wait(100);
   check('экран данных', doc.body.textContent.includes('build_world.py'));
+  const countiesShown = (doc.body.textContent.match(/графств на карте:\s*(\d+|—)/) || [])[1];
+  check('на экране данных видно число графств', Boolean(countiesShown) && countiesShown !== '—', countiesShown || 'нет строки');
 
   // импорт своего сохранения
   click(doc.querySelector('[data-nav="import"]'));

@@ -187,7 +187,7 @@ function viewData() {
           <div class="eyebrow">${T('data.current', 'Текущий мир')}</div>
           <div style="font-family:var(--font-display);font-size:var(--step-3);margin:8px 0 4px">${esc(dateText(meta.date))}</div>
           <p class="small muted">${T('data.file', 'Файл')}: <code>${esc(meta.source)}</code></p>
-          <p class="small muted">${T('data.build', 'Сборка')}: <code>${esc(meta.build || '—')}</code> · ${T('data.counties', 'графств на карте')}: ${meta.mapIndex?.titles?.counties ?? '—'}</p>
+          <p class="small muted">${T('data.build', 'Сборка')}: <code>${esc(meta.build || '—')}</code> · ${T('data.counties', 'графств на карте')}: ${state.world.mapIndex?.titles?.counties ?? '—'}</p>
           <div class="kv"><span>${T('data.realms', 'Держав')}</span><b class="num">${meta.counts.realms}</b></div>
           <div class="kv"><span>${T('data.known', 'В поле зрения')}</span><b class="num">${meta.counts.known}</b></div>
           <div class="kv"><span>${T('data.dynasty', 'Династия')}</span><b class="num">${meta.counts.dynasty}</b></div>

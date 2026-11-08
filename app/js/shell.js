@@ -149,6 +149,39 @@ function afterRender() {
     });
   }
 
+  const checkMap = el('checkMap');
+  if (checkMap) {
+    checkMap.addEventListener('click', async () => {
+      const out = el('checkMapResult');
+      out.textContent = T('data.checking', 'Проверяю…');
+      try {
+        const build = state.world.meta?.build ? `?v=${state.world.meta.build}` : '';
+        const card = await loadTitlesCard();
+        if (!card || !card.probe || !card.probe.length) {
+          out.textContent = T('data.checkNoProbes', 'В данных нет контрольных точек — пересоберите мир.');
+          return;
+        }
+        const img = new Image();
+        img.src = (state.world.mapIndex?.titles?.file || 'world-map-titles-ids.png') + build;
+        await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; });
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        let ok = 0;
+        for (const point of card.probe) {
+          const d = ctx.getImageData(point.x, point.y, 1, 1).data;
+          const idx = (d[0] << 16) | (d[1] << 8) | d[2];
+          if (card.counties[idx - 1] === point.key) ok += 1;
+        }
+        out.textContent = `${ok} / ${card.probe.length}`;
+      } catch (error) {
+        out.textContent = String(error && error.message ? error.message : error);
+      }
+    });
+  }
+
   const book = el('bookRoot');
   if (book) {
     el('downloadBook')?.addEventListener('click', () => download('svod-roda.md', bookText()));
@@ -188,6 +221,8 @@ function viewData() {
           <div style="font-family:var(--font-display);font-size:var(--step-3);margin:8px 0 4px">${esc(dateText(meta.date))}</div>
           <p class="small muted">${T('data.file', 'Файл')}: <code>${esc(meta.source)}</code></p>
           <p class="small muted">${T('data.build', 'Сборка')}: <code>${esc(meta.build || '—')}</code> · ${T('data.counties', 'графств на карте')}: ${state.world.mapIndex?.titles?.counties ?? '—'}</p>
+          <p><button class="btn btn--ghost btn--small" type="button" id="checkMap">${T('data.checkMap', 'Проверить карту')}</button>
+             <span class="small muted" id="checkMapResult"></span></p>
           <div class="kv"><span>${T('data.realms', 'Держав')}</span><b class="num">${meta.counts.realms}</b></div>
           <div class="kv"><span>${T('data.known', 'В поле зрения')}</span><b class="num">${meta.counts.known}</b></div>
           <div class="kv"><span>${T('data.dynasty', 'Династия')}</span><b class="num">${meta.counts.dynasty}</b></div>

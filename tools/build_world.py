@@ -1845,7 +1845,7 @@ def main() -> None:
             if not name:
                 return quiet_fill
             if name in family_names:
-                return mix_with_paper(accent, 0.35)
+                return mix_with_paper(accent, 0.9)
             digest = hashlib.md5(name.encode("utf-8")).digest()
             # Тона домов приглушаем к бумаге: карта не должна спорить с летописью.
             return mix_with_paper(HOUSE_TONES[digest[0] % len(HOUSE_TONES)], 0.62)
@@ -1854,11 +1854,18 @@ def main() -> None:
         owners = title_card.get("owners") or {}
         for position, key in enumerate(title_card["counties"], start=1):
             holder = owners.get(key)
-            # Красим по державе, а не по каждому дому: иначе карта рябая.
+            person = characters.get(holder) if holder else None
+            # Земли рода — киноварью, даже если род всего лишь вассал.
+            if person and person.get("house") in dynasty_houses:
+                fills[position] = mix_with_paper(accent, 0.9)
+                continue
+            # Остальное — по державе, иначе карта рябая.
             realm_id = top_liege(holder) if holder else None
             realm = realms.get(realm_id or -1) or {}
             fills[position] = house_fill(realm.get("house_name"))
 
+        family_cells = sum(1 for color in fills.values() if color == mix_with_paper(accent, 0.9))
+        print(f"карта власти: графств рода {family_cells} из {len(fills)}", flush=True)
         payload["mapIndex"]["titles"] = render_title_map(
             titles_out, args.game, title_card, centroids, scale=2, fills=fills
         )

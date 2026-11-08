@@ -344,6 +344,8 @@ function setupMap() {
   const UNTITLED = 0xffffff;
   // Сверка карты с данными по контрольным точкам: ловит сдвиг и рассинхрон.
   let probeReport = null;
+  // Предупреждение о расхождении: показываем, но выбор не блокируем.
+  let mapWarn = '';
   const verifyProbe = (card) => {
     if (probeReport || !ctx) return probeReport;
     const points = card.probe || [];
@@ -370,20 +372,11 @@ function setupMap() {
     if (!card || !card.counties) return null;
     // Карта и данные должны быть от одной сборки: иначе клик покажет чужой титул.
     const probe = verifyProbe(card);
-    if (probe && probe.ok < probe.total) {
-      detail.hidden = false;
-      detail.innerHTML = `<b>${T('world.mapShifted', 'Карта не совпадает с данными')}</b>
-          <p class="small muted">${T('world.mapShiftedNote', 'Контрольные точки не сходятся — пересоберите мир: build_world.py пишет карту и данные вместе.')}</p>
-          <p class="small muted">${probe.ok} / ${probe.total}</p>`;
-      return null;
-    }
     const expected = state.world.mapIndex?.titles?.counties;
-    if (expected && card.counties.length !== expected) {
-      detail.hidden = false;
-      detail.innerHTML = `<b>${T('world.mapMismatch', 'Карта и данные не совпадают')}</b>
-          <p class="small muted">${T('world.mapMismatchNote', 'Пересоберите мир: build_world.py пишет карту и данные вместе.')}</p>`;
-      return null;
-    }
+    const mismatch = (expected && card.counties.length !== expected)
+      ? `${card.counties.length} ≠ ${expected}`
+      : (probe && probe.ok < probe.total ? `${probe.ok} / ${probe.total}` : '');
+    if (mismatch) mapWarn = mismatch;
     const key = card.counties[index - 1];
     if (!key) return null;
     // Феодальная цепочка: держатель → его сюзерен → … → независимый.
@@ -427,7 +420,10 @@ function setupMap() {
       ? title.chain.map((t) => `${(MAP_TIER_RU())[tierOfKey(t.key)] || T('world.tierFallback', 'титул')} — ${esc(t.name)}`).join(' · ')
       : T('world.noSeniors', 'старших титулов нет: вольное графство');
     detail.hidden = false;
-    detail.innerHTML = `<b>${esc(title.name)}</b> <span class="small muted">${T('world.titleCounty', 'графство')}</span>
+    const warn = mapWarn
+      ? `<p class="small muted map-warn">${T('world.mapShifted', 'Карта может не совпадать с данными')}: ${esc(mapWarn)}. ${T('world.mapShiftedNote', 'Пересоберите мир: build_world.py пишет карту и данные вместе.')}</p>`
+      : '';
+    detail.innerHTML = `${warn}<b>${esc(title.name)}</b> <span class="small muted">${T('world.titleCounty', 'графство')}</span>
         <p class="small">${chain}</p>
         <p class="small muted">${ownerName
           ? `${T('world.holderIs', 'Держатель')} — ${esc(ownerName)}${ownerHouse ? `, ${T('world.houseShort', 'дом')} ${esc(ownerHouse)}` : ''}${ownerRec && ownerRec.birth ? ` (${String(ownerRec.birth).slice(0, 4)}—${ownerRec.death ? String(ownerRec.death).slice(0, 4) : '…'})` : ''}.`

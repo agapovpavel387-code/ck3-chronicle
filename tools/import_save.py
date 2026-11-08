@@ -24,7 +24,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-import sys
+# Читаем мир тем же кодом, что и остальные инструменты.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from world_data import load_world  # noqa: E402
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")

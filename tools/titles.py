@@ -156,8 +156,10 @@ def read_titles(dump_path: Path) -> dict[int, dict]:
             history = []
             for row in tile.get("history") or []:
                 if isinstance(row, list) and len(row) >= 3:
-                    # Держатель 0 — пустышка: иначе дубли с записью из сейва, где его нет.
-                    history.append([row[0], ref(row[1]) or None, row[2], "dump"])
+                    holder = row[1]
+                    # В истории держатель — человек, а не титул. Иное отбрасываем.
+                    holder_id = ref(holder) if isinstance(holder, dict) and holder.get("subdir") == "characters" else None
+                    history.append([row[0], holder_id or None, row[2], "dump"])
             titles[int(ident)] = {
                 "id": int(ident),
                 "key": tile.get("key"),
@@ -166,7 +168,11 @@ def read_titles(dump_path: Path) -> dict[int, dict]:
                 "capital": ref(capital),
                 "faith": faith.get("name") if isinstance(faith, dict) else None,
                 "culture": culture.get("name") if isinstance(culture, dict) else None,
-                "holder": ref(tile.get("de_facto")),
+                # Держатель — человек, он ставится позже из characters[].titles.
+                # de_facto — сюзерен-ТИТУЛ, а не владелец: все ссылки ведут в titles.
+                "holder": None,
+                "holderSince": None,
+                "liege": ref(tile.get("de_facto")),
                 # Прямой de jure-сюзерен: надёжнее обратной сборки через вассалов.
                 "de_jure": ref(tile.get("de_jure")),
                 "vassals": [ref(v) for v in (tile.get("de_jure_vassals") or []) if ref(v)],
@@ -174,6 +180,44 @@ def read_titles(dump_path: Path) -> dict[int, dict]:
                 "gone": False,
             }
     return titles
+
+
+def attach_holders(titles: dict[int, dict], characters: dict[int, dict]) -> dict:
+    """Ставит держателя-человека: из списка титулов персонажа, иначе из истории.
+
+    `titles[].de_facto` — это сюзерен-ТИТУЛ (все 16 086 ссылок в сейве ведут
+    в `titles`), поэтому владельца берём из `characters[].titles` — это 19 228
+    связей «человек держит титул». Где списка нет, годится последняя запись
+    истории с человеком.
+    """
+    stats = {"by_person": 0, "by_history": 0, "none": 0}
+    for tile in titles.values():
+        tile["holder"] = None
+        tile["holderSince"] = None
+
+    for cid, person in characters.items():
+        for title_id in person.get("titles") or []:
+            tile = titles.get(title_id)
+            if tile is not None and tile["holder"] is None:
+                tile["holder"] = cid
+                stats["by_person"] += 1
+
+    for tile in titles.values():
+        if tile["holder"] is None:
+            for row in reversed(tile["history"]):
+                if row[1]:
+                    tile["holder"] = row[1]
+                    stats["by_history"] += 1
+                    break
+        if tile["holder"] is None:
+            stats["none"] += 1
+            continue
+        # С какого года держит: последняя запись с этим человеком.
+        for row in reversed(tile["history"]):
+            if row[1] == tile["holder"]:
+                tile["holderSince"] = row[0]
+                break
+    return stats
 
 
 def read_save_titles(extra_path: Path) -> tuple[dict, dict]:
@@ -561,6 +605,20 @@ def selftest() -> int:
     assert reason_text("unknown_reason") == "unknown reason"
     assert normalize_action("Inherited") == "inheritance"
     assert normalize_action("appointment_succession") == "appointment_succession"
+    # de_facto — сюзерен, а не держатель: держателя даёт characters[].titles.
+    feudal = {
+        1: {"id": 1, "key": "c_x", "name": "Икс", "tier": "County", "holder": None, "holderSince": None,
+            "liege": 9, "de_jure": 9, "history": [["0900-01-01", 5, "inheritance", "dump"]], "vassals": [], "gone": False},
+        2: {"id": 2, "key": "c_y", "name": "Игрек", "tier": "County", "holder": None, "holderSince": None,
+            "liege": None, "de_jure": None, "history": [["0910-05-05", 6, "granted", "dump"]], "vassals": [], "gone": False},
+    }
+    people = {5: {"titles": [1]}, 6: {"titles": []}}
+    stats = attach_holders(feudal, people)
+    assert feudal[1]["holder"] == 5, feudal[1]
+    assert feudal[1]["holderSince"] == "0900-01-01", feudal[1]
+    assert feudal[2]["holder"] == 6, feudal[2]
+    assert stats["by_person"] == 1 and stats["by_history"] == 1, stats
+
     # Имя с ключом династии читается без служебной подстановки.
     assert clean_name("Семья Пхёнсан $dynn_Bak_6734$") == "Семья Пхёнсан", clean_name("Семья Пхёнсан $dynn_Bak_6734$")
     assert clean_name(None) == ""

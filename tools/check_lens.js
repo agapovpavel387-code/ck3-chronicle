@@ -137,6 +137,7 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
     const detail = doc.getElementById('mapDetail');
     check('клик по титулу даёт панель', Boolean(detail) && !detail.hidden, detail ? detail.textContent.slice(0, 80) : 'нет');
     check('в панели цепочка титулов', Boolean(detail) && /герцогство|вольное графство/.test(detail.textContent || ''), (detail?.textContent || '').slice(0, 120));
+    check('в панели сказано о держателе', Boolean(detail) && /Держатель/.test(detail.textContent || ''), (detail?.textContent || '').slice(0, 80));
 
     const legendTitles = doc.querySelector('.map-legend--titles');
     check('легенда тиров видна', Boolean(legendTitles) && legendTitles.textContent.includes('империя'), legendTitles?.textContent.slice(0, 60) || 'нет');

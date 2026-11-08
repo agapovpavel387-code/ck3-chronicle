@@ -348,24 +348,52 @@ function setupMap() {
     }
     const key = card.counties[index - 1];
     if (!key) return null;
+    // Феодальная цепочка: держатель → его сюзерен → … → независимый.
+    const lords = card.lords || {};
+    const people = [];
+    let cur = card.owners?.[key] ?? null;
+    const seen = new Set();
+    while (cur && !seen.has(cur) && people.length < 6) {
+      seen.add(cur);
+      const rec = lords[String(cur)];
+      if (!rec) break;
+      people.push({ id: cur, ...rec });
+      cur = rec.liege;
+    }
     return {
       key,
       name: card.names?.[key] || key,
       chain: (card.chain?.[index - 1] || []).map((k) => ({ key: k, name: card.names?.[k] || k })),
       owner: card.owners?.[key] ?? null,
+      people,
     };
+  };
+
+  // Кому подчиняется: держатель → сюзерен → … → независимый.
+  const vassalLine = (title) => {
+    const people = title.people || [];
+    if (!people.length) return '';
+    if (people.length === 1) return T('world.independent', 'Никому не подчиняется: независимый правитель.');
+    const names = people.slice(1).map((p) => esc(p.name)).join(' → ');
+    return `${T('world.vassalOf', 'Сюзерены')}: ${names}${people[people.length - 1].liege ? ` → ${T('world.above', 'выше не записано')}` : ` (${T('world.topSuzerain', 'верхний — независимый')})`}.`;
   };
 
   const titleCard = (title) => {
     const owner = title.owner ? ix.people.get(title.owner) : null;
-    const ownerName = owner ? nameOf(owner) : (ix.names.get(title.owner) || '');
+    // Держатель не всегда в дереве рода: имя берём из общего справочника.
+    const ownerRec = title.owner ? ix.names.get(title.owner) : null;
+    const ownerName = owner ? nameOf(owner) : (ownerRec && ownerRec.name ? ownerRec.name : '');
+    const ownerHouse = (owner && owner.house) || (ownerRec && ownerRec.house) || '';
     const chain = title.chain.length
       ? title.chain.map((t) => `${(MAP_TIER_RU())[tierOfKey(t.key)] || T('world.tierFallback', 'титул')} — ${esc(t.name)}`).join(' · ')
       : T('world.noSeniors', 'старших титулов нет: вольное графство');
     detail.hidden = false;
     detail.innerHTML = `<b>${esc(title.name)}</b> <span class="small muted">${T('world.titleCounty', 'графство')}</span>
         <p class="small">${chain}</p>
-        <p class="small muted">${ownerName ? `${T('world.rulerIs', 'Государь —')} ${esc(ownerName)}${owner && owner.house ? `, ${T('world.houseShort', 'дом')} ${esc(owner.house)}` : ''}.` : T('world.holderUnknown', 'Держатель неизвестен.')}</p>
+        <p class="small muted">${ownerName
+          ? `${T('world.holderIs', 'Держатель')} — ${esc(ownerName)}${ownerHouse ? `, ${T('world.houseShort', 'дом')} ${esc(ownerHouse)}` : ''}${ownerRec && ownerRec.birth ? ` (${String(ownerRec.birth).slice(0, 4)}—${ownerRec.death ? String(ownerRec.death).slice(0, 4) : '…'})` : ''}.`
+          : T('world.holderUnknown', 'Держатель неизвестен.')}</p>
+        <p class="small muted">${vassalLine(title)}</p>
         <p class="small"><a href="#chronicle" data-title-link="${esc(title.key)}">${T('world.openChronicle', 'Смотреть хронику по этому титулу')}</a></p>`;
     const link = detail.querySelector('[data-title-link]');
     if (link) {

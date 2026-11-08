@@ -31,6 +31,7 @@ CACHE = ROOT / "_cache"
 # Модель титулов живёт отдельно: три свидетеля, история с причиной и источником.
 sys.path.insert(0, str(HERE))
 from titles import attach_memory, dedupe, merge_history, normalize_action, reason_text, read_titles, reconcile  # noqa: E402
+from feudal import person_chain, suzerain_of  # noqa: E402
 from world_maps import (  # noqa: E402
     HOUSE_TONES,
     MAP_INK,
@@ -476,6 +477,16 @@ def main() -> None:
                 # но иногда с разметкой — чистим её здесь, а не в летописи.
                 "cause": clean_cause(char.get("reason")),
             }
+    # Держатель титула — человек, а не de_facto (это сюзерен-титул).
+    from titles import attach_holders
+
+    holder_stats = attach_holders(titles, characters)
+    print(
+        f"держатели: по списку персонажа {holder_stats['by_person']}, "
+        f"по истории {holder_stats['by_history']}, без держателя {holder_stats['none']}",
+        flush=True,
+    )
+
     with args.dump.open("rb") as handle:
         for ident, mem in ijson.kvitems(handle, "memories", use_float=False):
             mtype = (mem.get("type") or "").strip()
@@ -1055,6 +1066,9 @@ def main() -> None:
                 # иначе из «Кто чем владеет» пропадают целые владения. Одно имя — одна строка:
                 # графство и герцогство с одним названием не должны двоиться.
                 "tenures": [] if person.get("death") else _tenures(cid, own),
+                # Феодальное подчинение: прямой сюзерен и верхний, кому служит.
+                "liege": person.get("liege"),
+                "suzerain": suzerain_of(cid, characters),
                 "ring": 0 if person["house"] in dynasty_houses or cid in spouses_of_members else person_ring(cid),
             }
         )
@@ -1833,6 +1847,25 @@ def main() -> None:
         payload["mapIndex"]["titles"] = render_title_map(
             titles_out, args.game, title_card, centroids, scale=2
         )
+        # Справочник держателей для панели: имя, дом, сюзерен, верхний сюзерен.
+        # Только те, кто нужен панели: держатели графств и их сюзерены.
+        needed = {cid for cid in (title_card.get("owners") or {}).values() if cid}
+        for cid in list(needed):
+            for step in person_chain(cid, characters):
+                needed.add(step["id"])
+        lords = {}
+        for cid in needed:
+            person = characters.get(cid)
+            if not person:
+                continue
+            lords[str(cid)] = {
+                "name": person.get("name") or "",
+                "house": person.get("house_name") or "",
+                "liege": person.get("liege"),
+                "suzerain": suzerain_of(cid, characters),
+                "since": person.get("birth"),
+            }
+        title_card["lords"] = lords
         (args.out.parent / "titles-map.json").write_text(
             json.dumps(title_card, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
         )

@@ -290,7 +290,12 @@ function serveStatic(req, res) {
       res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Not found: ' + rel);
       return;
     }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream' });
+    // Приложение локальное: свежесть важнее кэша. Иначе браузер держит старый
+  // index.html и старые карты, а данные приходят новые — и титулы «съезжают».
+  res.writeHead(200, {
+    'Content-Type': TYPES[path.extname(file).toLowerCase()] || 'application/octet-stream',
+    'Cache-Control': 'no-store, must-revalidate',
+  });
     res.end(data);
   });
 }

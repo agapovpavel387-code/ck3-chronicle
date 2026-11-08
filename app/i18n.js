@@ -104,6 +104,11 @@
       'world.tierCounty': 'графство',
       'world.titleCounty': 'графство',
       'world.titlesNote': 'все титулы, кроме баронств; щёлкните, чтобы увидеть цепочку',
+      'world.untitledLand': 'Земля без титула',
+      'world.untitledLandNote': 'Провинция есть, но графства у неё в сейве нет — записывать нечего.',
+      'world.mapMismatch': 'Карта и данные не совпадают',
+      'world.mapMismatchNote': 'Пересоберите мир: build_world.py пишет карту и данные вместе.',
+      'world.zoomHint': 'колесо — масштаб, перетаскивание — сдвиг',
 
       'chronicle.title': 'Хроника',
       'chronicle.lead': 'Год за годом — только то, что дошло до рода. Чем дальше двор, тем короче запись.',
@@ -352,6 +357,11 @@
       'world.tierCounty': 'county',
       'world.titleCounty': 'county',
       'world.titlesNote': 'all titles except baronies; click to see the chain',
+      'world.untitledLand': 'Land without a title',
+      'world.untitledLandNote': 'The province exists, but the save gives it no county — there is nothing to record.',
+      'world.mapMismatch': 'The map and the data do not match',
+      'world.mapMismatchNote': 'Rebuild the world: build_world.py writes the map and the data together.',
+      'world.zoomHint': 'wheel to zoom, drag to pan',
 
       'chronicle.title': 'Chronicle',
       'chronicle.lead': 'Year by year — only what reached the house. The farther the court, the shorter the entry.',

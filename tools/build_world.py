@@ -1843,6 +1843,10 @@ def main() -> None:
         )
 
     args.out.parent.mkdir(parents=True, exist_ok=True)
+    # Метка сборки: по ней приложение сбрасывает кэш карт. Иначе браузер держит
+    # старую карту рядом с новыми данными — и клик показывает чужие титулы.
+    from datetime import datetime, timezone
+    payload["meta"]["build"] = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     # Мир живёт одним файлом: `.js` работает и через сервер, и с file://.
     # Второй копии в JSON не держим — это десять мегабайт дубля.

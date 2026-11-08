@@ -21,6 +21,9 @@ vc.on('error', (m) => errors.push(String(m)));
     names: { c_one: 'Первое', c_two: 'Второе', c_three: 'Третье', c_four: 'Четвёртое', c_five: 'Пятое', d_one: 'Герцогство', k_one: 'Королевство', e_one: 'Империя' },
     owners: { c_one: 1 },
   };
+  // Мир большой, а мок маленький: согласуем число графств, иначе проверка
+  // «карта и данные одной сборки» справедливо ругается.
+  if (world.mapIndex?.titles) world.mapIndex.titles.counties = titleCard.counties.length;
 
 const dom = new JSDOM(html, {
   url: 'http://127.0.0.1:8779/',
@@ -114,6 +117,8 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
     check('линза титулов открылась', (imgT.getAttribute('src') || '').includes('titles'), imgT.getAttribute('src'));
     const titlesIndex = titles.index || titles.file || '';
     check('у карты титулов своя карта индексов', titlesIndex.includes('titles-ids'), titlesIndex);
+    check('карта и данные одной сборки', titles.counties === titleCard.counties.length,
+      `в мире ${titles.counties}, в данных ${titleCard.counties.length}`);
 
     const zoomButtons = [...doc.querySelectorAll('[data-zoom]')];
     check('кнопки масштаба есть', zoomButtons.length === 3, `кнопок: ${zoomButtons.length}`);

@@ -121,9 +121,12 @@ function viewWorld() {
          <span><i class="tier-line tier-line--duchy"></i>${T('world.tierDuchy', 'герцогство')}</span>
          <span><i class="tier-line tier-line--county"></i>${T('world.tierCounty', 'графство')}</span>
          <span class="muted">${T('world.titlesNote', 'все титулы, кроме баронств; щёлкните, чтобы увидеть цепочку')}</span>
+         <span class="muted">${T('world.zoomHint', 'колесо — масштаб, перетаскивание — сдвиг')}</span>
        </figcaption>`
     : '';
 
+  const build = meta.build || '';
+  const v = build ? `?v=${build}` : '';
   const currentFile = lens === 'titles'
     ? (titlesLayer?.map || meta.map)
     : lens === 'political'
@@ -134,7 +137,7 @@ function viewWorld() {
     ? `<figure class="map-figure" id="mapFigure">
            ${lensButtons}${layerButtons}
            <div class="map-wrap" id="mapWrap">
-             <img id="worldMap" src="_data/${esc(currentFile)}" alt="${T('world.mapAlt', 'Карта мира')}" loading="lazy" data-lens="${lens}" data-layer="${layer}" tabindex="0">
+             <img id="worldMap" src="_data/${esc(currentFile)}${v}" alt="${T('world.mapAlt', 'Карта мира')}" loading="lazy" data-lens="${lens}" data-layer="${layer}" tabindex="0">
              <div class="map-tip" id="mapTip" hidden></div>
              <div class="map-zoom" role="group" aria-label="${T('world.zoomAria', 'Масштаб карты')}">
                <button type="button" data-zoom="in" aria-label="${T('world.zoomIn', 'Приблизить')}">+</button>
@@ -177,7 +180,8 @@ let titlesLoading = null;
 function loadTitlesCard() {
   if (titlesCard) return Promise.resolve(titlesCard);
   if (!titlesLoading) {
-    titlesLoading = fetch('_data/titles-map.json')
+    const tag = state.world.meta?.build ? `?v=${state.world.meta.build}` : '';
+    titlesLoading = fetch('_data/titles-map.json' + tag)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => { titlesCard = data; return data; })
       .catch(() => null);
@@ -219,7 +223,8 @@ function setupMap() {
     : lens === 'political'
       ? (political?.[layer]?.index || political?.houses?.index || mapIndex.file)
       : mapIndex.file;
-  pick.src = '_data/' + pickFile;
+  const buildTag = state.world.meta?.build || '';
+  pick.src = '_data/' + pickFile + (buildTag ? `?v=${buildTag}` : '');
 
   if (lens === 'titles') loadTitlesCard();
 
@@ -326,11 +331,21 @@ function setupMap() {
   };
 
   // Цепочка титулов: графство → герцогство → королевство → империя.
+  const UNTITLED = 0xffffff;
   const titleAt = async (ev) => {
     const index = indexAt(ev);
     if (!index) return null;
+    if (index === UNTITLED) return { untitled: true };
     const card = await loadTitlesCard();
     if (!card || !card.counties) return null;
+    // Карта и данные должны быть от одной сборки: иначе клик покажет чужой титул.
+    const expected = state.world.mapIndex?.titles?.counties;
+    if (expected && card.counties.length !== expected) {
+      detail.hidden = false;
+      detail.innerHTML = `<b>${T('world.mapMismatch', 'Карта и данные не совпадают')}</b>
+          <p class="small muted">${T('world.mapMismatchNote', 'Пересоберите мир: build_world.py пишет карту и данные вместе.')}</p>`;
+      return null;
+    }
     const key = card.counties[index - 1];
     if (!key) return null;
     return {
@@ -368,6 +383,15 @@ function setupMap() {
       if (!ctx) return;
       const index = indexAt(ev);
       if (!index) { tip.hidden = true; img.style.cursor = 'default'; return; }
+      if (index === UNTITLED) {
+        img.style.cursor = 'default';
+        const rectU = img.getBoundingClientRect();
+        tip.innerHTML = `<b>${T('world.untitledLand', 'Земля без титула')}</b>`;
+        tip.hidden = false;
+        tip.style.left = Math.max(8, Math.min(ev.clientX - rectU.left, rectU.width - 170)) + 'px';
+        tip.style.top = Math.max(8, ev.clientY - rectU.top - 12) + 'px';
+        return;
+      }
       const card = titlesCard;
       const key = card?.counties?.[index - 1];
       if (!key) { tip.hidden = true; img.style.cursor = 'default'; return; }
@@ -400,6 +424,12 @@ function setupMap() {
     if (lens === 'titles') {
       const title = await titleAt(ev);
       if (!title) { detail.hidden = true; return; }
+      if (title.untitled) {
+        detail.hidden = false;
+        detail.innerHTML = `<b>${T('world.untitledLand', 'Земля без титула')}</b>
+            <p class="small muted">${T('world.untitledLandNote', 'Провинция есть, но графства у неё в сейве нет — записывать нечего.')}</p>`;
+        return;
+      }
       titleCard(title);
       return;
     }

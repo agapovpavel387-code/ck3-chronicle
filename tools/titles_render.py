@@ -213,6 +213,9 @@ def render_title_map(out: Path, game: Path, card: dict, centroids: dict, scale: 
     for idx in range(1, len(counties) + 1):
         index_rgb[idx] = ((idx >> 16) & 255, (idx >> 8) & 255, idx & 255)
     pick = index_rgb[layer_county]
+    # В индексе различаем море и землю без титула: иначе обе молчат одинаково.
+    pick[layer_province == 0] = (0, 0, 0)
+    pick[(layer_province != 0) & (layer_county == 0)] = (255, 255, 255)
     ids_path = out.with_name(out.stem + "-ids.png")
     Image.fromarray(pick).resize(out_size, Image.NEAREST).save(ids_path, optimize=True)
 

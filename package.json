@@ -1,6 +1,6 @@
 {
   "name": "ck3-chronicle",
-  "version": "0.5.1-alpha",
+  "version": "0.5.2-alpha",
   "private": true,
   "description": "Chronicle of the House: a local app over a Crusader Kings III save",
   "license": "MIT",

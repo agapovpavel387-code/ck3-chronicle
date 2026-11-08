@@ -11,7 +11,8 @@ async function boot() {
   try {
     // Мир — один файл: `_data/world.js`. Он работает и через сервер, и с file://.
     // Если данные уже в странице (тесты, встраивание) — не грузим второй раз.
-    if (!window.__WORLD__) await loadScript('_data/world.js');
+    // Метка времени: мир пересобирается, и браузер не должен держать старую копию.
+    if (!window.__WORLD__) await loadScript(`_data/world.js?t=${Date.now()}`);
     if (!window.__WORLD__) throw new Error('в world.js нет данных');
     startWith(window.__WORLD__);
   } catch (err) {
@@ -44,6 +45,9 @@ function startWith(world) {
   state.tree = freshTree();
   renderMeta();
   renderRailFoot();
+  // Ссылка вида #world должна открывать мир, а не дерево по умолчанию.
+  const hashView = location.hash.replace('#', '');
+  if (hashView) state.view = hashView;
   render();
 }
 function renderMeta() {

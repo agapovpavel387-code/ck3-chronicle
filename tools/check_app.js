@@ -51,14 +51,18 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
   check('приложение показано', doc.getElementById('boot').hidden && !doc.getElementById('app').hidden);
 
   // По умолчанию род открыт конспектом: строки, отступы по слоям.
+  // Порог зависит от размера рода: демо-мир и маленькая династия должны проходить одинаково.
+  const dynastyCount = (world.meta && world.meta.counts && world.meta.counts.dynasty) || 0;
+  const minRows = Math.min(20, Math.max(2, Math.floor(dynastyCount / 3)));
   const rows = doc.querySelectorAll('.kin-row');
-  check('конспект рода отрисован', rows.length >= 20, `строк: ${rows.length}`);
+  check('конспект рода отрисован', rows.length >= minRows, `строк: ${rows.length} (в династии ${dynastyCount})`);
 
   // Полотно — второй режим, проверяем и его.
   click(doc.getElementById('treeMode'));
   await wait(250);
   const nodes = doc.querySelectorAll('.tree .node');
-  check('дерево отрисовано', nodes.length >= 20, `узлов: ${nodes.length}`);
+  const minNodes = Math.min(20, Math.max(2, Math.floor(dynastyCount / 2)));
+  check('дерево отрисовано', nodes.length >= minNodes, `узлов: ${nodes.length} (в династии ${dynastyCount})`);
   check('поколения есть', new Set([...nodes].map((n) => n.querySelector('rect').getAttribute('y'))).size >= 2);
 
   const viewport = doc.getElementById('treeViewport');

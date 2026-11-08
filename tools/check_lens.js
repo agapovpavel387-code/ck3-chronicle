@@ -13,13 +13,24 @@ const vc = new VirtualConsole();
 vc.on('jsdomError', (e) => { if (!/scrollTo|Could not load|scrollIntoView/.test(e.message)) errors.push(e.message); });
 vc.on('error', (m) => errors.push(String(m)));
 
+  const titleCard = {
+    counties: ['c_one', 'c_two', 'c_three', 'c_four', 'c_five'],
+    chain: [['d_one', 'k_one', 'e_one'], ['d_one', 'k_one', 'e_one'], [], ['d_two', 'k_two'], ['d_two', 'k_two', 'e_two']],
+    province: { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5 },
+    names: { c_one: 'Первое', c_two: 'Второе', c_three: 'Третье', c_four: 'Четвёртое', c_five: 'Пятое', d_one: 'Герцогство', k_one: 'Королевство', e_one: 'Империя' },
+    owners: { c_one: 1 },
+  };
+
 const dom = new JSDOM(html, {
   url: 'http://127.0.0.1:8779/',
   runScripts: 'dangerously',
   pretendToBeVisual: true,
   virtualConsole: vc,
   beforeParse(window) {
-    window.fetch = async () => ({ ok: true, json: async () => world, status: 200 });
+    window.fetch = async (url) => {
+      if (String(url).includes('titles-map')) return { ok: true, json: async () => titleCard, status: 200 };
+      return { ok: true, json: async () => world, status: 200 };
+    };
     window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} });
     window.Element.prototype.getBoundingClientRect = function () { return { width: 1200, height: 700, top: 0, left: 0, right: 1200, bottom: 700 }; };
     window.Element.prototype.scrollIntoView = function () {};
@@ -56,7 +67,10 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
   const hasFamily = Boolean(political?.family);
 
   const buttons = [...doc.querySelectorAll('.lens[data-lens]')];
-  check('переключатель линз есть', buttons.length === 2, `кнопок: ${buttons.length}`);
+  check('переключатель линз есть', buttons.length === 3, `кнопок: ${buttons.length}`);
+
+  const titles = world.mapIndex?.titles;
+  check('карта титулов собрана', Boolean(titles?.map), titles?.map || 'нет');
 
   const img = doc.getElementById('worldMap');
   check('по умолчанию радиус знания', !(img.getAttribute('src') || '').includes('political'), img.getAttribute('src'));
@@ -86,6 +100,37 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
     const groups = doc.querySelectorAll('.lens-house');
     check('в легенде дома с правителями', groups.length > 0, `групп: ${groups.length}`);
     check('у слоя земель своя карта индексов', (political.family.index || '').includes('political-ids'), political.family.index);
+  }
+
+  // Линза титулов: своя карта, свой индекс, зум и цепочка по клику.
+  if (titles) {
+    click(buttons.find((b) => b.dataset.lens === 'titles'));
+    await wait(400);
+    const imgT = doc.getElementById('worldMap');
+    check('линза титулов открылась', (imgT.getAttribute('src') || '').includes('titles'), imgT.getAttribute('src'));
+    const titlesIndex = titles.index || titles.file || '';
+    check('у карты титулов своя карта индексов', titlesIndex.includes('titles-ids'), titlesIndex);
+
+    const zoomButtons = [...doc.querySelectorAll('[data-zoom]')];
+    check('кнопки масштаба есть', zoomButtons.length === 3, `кнопок: ${zoomButtons.length}`);
+    const before = imgT.style.transform || '';
+    click(zoomButtons.find((b) => b.dataset.zoom === 'in'));
+    await wait(100);
+    const after = imgT.style.transform || '';
+    check('масштаб меняется', after !== before && /scale\(/.test(after), after || 'нет transform');
+    click(zoomButtons.find((b) => b.dataset.zoom === 'reset'));
+    await wait(100);
+    check('сброс возвращает масштаб', /scale\(1\)/.test(imgT.style.transform || '') || !imgT.style.transform, imgT.style.transform);
+
+    // Клик по карте: canvas в jsdom отдаёт индекс 5 — пятое графство с цепочкой.
+    imgT.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 400, clientY: 300 }));
+    await wait(300);
+    const detail = doc.getElementById('mapDetail');
+    check('клик по титулу даёт панель', Boolean(detail) && !detail.hidden, detail ? detail.textContent.slice(0, 80) : 'нет');
+    check('в панели цепочка титулов', Boolean(detail) && /герцогство|вольное графство/.test(detail.textContent || ''), (detail?.textContent || '').slice(0, 120));
+
+    const legendTitles = doc.querySelector('.map-legend--titles');
+    check('легенда тиров видна', Boolean(legendTitles) && legendTitles.textContent.includes('империя'), legendTitles?.textContent.slice(0, 60) || 'нет');
   }
 
   check('нет ошибок jsdom', errors.length === 0, errors.slice(0, 2).join(' | '));

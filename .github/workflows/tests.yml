@@ -23,11 +23,13 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       # Первый гейт: версия, числа и документы сходятся с данными.
-      - name: Version, numbers, documents
-        run: |
-          python tools/stamp.py --check
-          python tools/facts.py --check
-          python tools/check_docs.py
+      # Разделены намеренно: по имени упавшего шага видно, какой гейт не сошёлся.
+      - name: Version is the same everywhere
+        run: python tools/stamp.py --check
+      - name: Numbers match the data
+        run: python tools/facts.py --check
+      - name: Documents match the facts
+        run: python tools/check_docs.py
 
       - name: Checks
         run: |

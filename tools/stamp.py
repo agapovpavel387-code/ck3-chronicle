@@ -101,7 +101,9 @@ def main() -> int:
         if not path.exists():
             problems.append(f"{rel}: файла нет")
             continue
-        original = path.read_text(encoding="utf-8", newline="")
+        # `newline` в read_text появился только в Python 3.13, а CI на 3.12.
+        with path.open(encoding="utf-8", newline="") as handle:
+            original = handle.read()
         updated = apply_rules(original, version, rules)
         if updated == original:
             continue

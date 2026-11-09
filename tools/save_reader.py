@@ -39,6 +39,19 @@ except Exception:
 
 WANTED = ("wars", "landed_titles")
 
+# Вера в 1.20: у человека и графства есть номер обряда (`rite=54`), а реестр
+# `rites` связывает номер с ключом обряда и номером веры. Отсюда вера берётся
+# без экстрактора — он её не отдаёт вовсе.
+CHAR_SECTIONS = ("living", "characters", "dead_unprunable", "character_lookup")
+RITE_ID_RE = re.compile(r"^(\d+)=\{\s*$")
+# Записи персонажей начинаются с нулевой колонки; вложенные числовые блоки — с отступа.
+CHAR_ID_RE = re.compile(r"^(\d+)=\{\s*$")
+# Поля обряда бывают на одной строке через табуляцию: «rite_type=roman_rite\t\t\tfaith=13».
+RITE_TYPE_RE = re.compile(r"rite_type=([a-z0-9_]+)")
+RITE_FAITH_RE = re.compile(r"\bfaith=(\d+)")
+RITE_KEY_RE = re.compile(r"\brite=(\d+)")
+COUNTY_RE = re.compile(r"^\s*(c_[a-z0-9_]+)=\{\s*$")
+
 SECTION_RE = re.compile(r"^([a-z_0-9]+)=\{\s*$")
 NESTED_RE = re.compile(r"^\s*landed_titles=\{\s*$")
 TITLE_RE = re.compile(r"^\s*(\d+)=\{\s*$")
@@ -228,6 +241,78 @@ def participants(side) -> list[int]:
     return out
 
 
+def read_faith(path: Path) -> dict:
+    """Обряды и вера: реестр обрядов, обряд у людей и у графств.
+
+    Отдельный проход по gamestate: разбор войн и титулов не трогаем, он проверен.
+    Глубину вложенности не считаем — секция `rites` внутри себя бывает вложенной,
+    а нужные строки узнаются по форме: `54={` задаёт запись, `rite_type=` и
+    `rite=` её наполняют.
+    """
+    rites: dict[str, dict] = {}
+    char_rites: dict[str, int] = {}
+    county_rites: dict[str, int] = {}
+
+    with zipfile.ZipFile(path) as archive, archive.open("gamestate") as raw:
+        depth = 0
+        section = None
+        rite_id = None
+        county = None
+        person = None
+        for raw_line in raw:
+            line = raw_line.decode("utf-8", "replace").rstrip("\r\n")
+            delta = brace_delta(line)
+            stripped = line.strip()
+
+            if depth == 0:
+                match = SECTION_RE.match(line)
+                section = match.group(1) if match else None
+                rite_id = county = person = None
+                depth += delta
+                continue
+
+            if section == "rites":
+                match = RITE_ID_RE.match(stripped)
+                if match:
+                    rite_id = match.group(1)
+                    rites.setdefault(rite_id, {})
+                elif rite_id:
+                    match = RITE_TYPE_RE.search(line)
+                    if match:
+                        rites[rite_id]["type"] = match.group(1)
+                    match = RITE_FAITH_RE.search(line)
+                    if match:
+                        rites[rite_id]["faith"] = int(match.group(1))
+                depth += delta
+                continue
+
+            if section == "county_manager":
+                match = COUNTY_RE.match(stripped)
+                if match:
+                    county = match.group(1)
+                else:
+                    match = RITE_KEY_RE.search(line)
+                    if match and county:
+                        county_rites[county] = int(match.group(1))
+                depth += delta
+                continue
+
+            if section in CHAR_SECTIONS:
+                match = RITE_KEY_RE.search(line)
+                if match and person:
+                    char_rites[person] = int(match.group(1))
+                else:
+                    match = CHAR_ID_RE.match(line)
+                    if match:
+                        person = match.group(1)
+                depth += delta
+                continue
+
+            depth += delta
+
+    return {"rites": rites, "char_rites": char_rites, "county_rites": county_rites}
+
+
 def read_save(path: Path) -> dict:
     names = ""
     try:
@@ -358,6 +443,7 @@ def read_save(path: Path) -> dict:
             }
         )
 
+    faith = read_faith(path)
     return {
         "source": str(path),
         "date": save_date or meta_date,
@@ -365,6 +451,9 @@ def read_save(path: Path) -> dict:
         "titles": titles,
         "names": title_names,
         "wars": wars,
+        "rites": faith["rites"],
+        "char_rites": faith["char_rites"],
+        "county_rites": faith["county_rites"],
     }
 
 

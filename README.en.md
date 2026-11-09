@@ -1,6 +1,6 @@
 # Chronicle of the House
 
-**Alpha 0.6.5** · Crusader Kings III 1.20.x
+**Alpha 0.6.6** · Crusader Kings III 1.20.x
 
 ![status](https://img.shields.io/badge/status-alpha-orange)
 ![CK3](https://img.shields.io/badge/Crusader%20Kings%20III-1.20.x-6b5b45)
@@ -40,7 +40,7 @@ Other ways to start:
 | `node tools/serve.js --port 9000` | custom port |
 | open `app/index.html` directly | works, because the demo world is also stored as `world.js` |
 
-The world in `app/_data` is a 917 campaign of the House of Zhu. How many realms, people, kin and events it holds is in [docs/facts.md](docs/facts.md): those numbers are counted from the data, not typed into prose. Realm and personal culture are read; faith is not: a 1.20 save keeps faith definitions but no link to people or counties, and the dossier says so plainly. Your own world is built by the same command (see below).
+The world in `app/_data` is a 917 campaign of the House of Zhu. How many realms, people, kin and events it holds is in [docs/facts.md](docs/facts.md): those numbers are counted from the data, not typed into prose. Realm and personal culture are read, and so is faith: a save stores it as a rite number on each person and county, and the rite register maps it to a name from the game localisation — see [docs/religion.md](docs/religion.md). Your own world is built by the same command (see below).
 
 ## Import your own save
 
@@ -182,7 +182,7 @@ It reports the date, how many dynasties and houses were read, how many houses ar
 
 ## Known limitations
 
-- **Faith is not available.** The 1.20 save stores faith definitions (108 of them) but no link from people or counties to a faith, so the app says so instead of guessing. Culture works.
+- **Faith comes from rites.** Each person and county carries `rite=<n>`; the save's `rites` section maps it to a rite key and a faith, and `common/religion/rite_types` plus the localisation give the name. No guessing, no extractor changes.
 - **Dates and names come from the save only.** Where the game did not record a name, the chronicle says "name unknown" rather than inventing one.
 - **Causes are not in the save.** The game records that someone was imprisoned or that a title changed hands, not why; the chronicle does not fill that gap.
 

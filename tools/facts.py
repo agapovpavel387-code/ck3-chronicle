@@ -49,6 +49,7 @@ def world_facts() -> dict:
     meta = world.get("meta") or {}
     counts = meta.get("counts") or {}
     events = world.get("events") or []
+    realms_list = world.get("realms") or []
     return {
         "date": meta.get("date") or "",
         "year": meta.get("year"),
@@ -61,6 +62,12 @@ def world_facts() -> dict:
         "eventsWithCause": sum(1 for e in events if e.get("why")),
         "byRing": {str(k): v for k, v in sorted((meta.get("byRing") or {}).items(), key=lambda kv: int(kv[0]))},
         "periods": len(meta.get("periods") or []),
+        # Вера приходит из сейва через обряды: считаем, где она есть и сколько разных.
+        "peopleWithFaith": sum(1 for p in (world.get("people") or []) if p.get("faith")),
+        "realmsWithFaith": sum(1 for r in realms_list if r.get("faith")),
+        "realmsInList": len(realms_list),
+        "faiths": len({p["faith"] for p in (world.get("people") or []) if p.get("faith")}
+                      | {r["faith"] for r in (world.get("realms") or []) if r.get("faith")}),
     }
 
 
@@ -152,6 +159,9 @@ def render_md(facts: dict) -> str:
         f"| Событий | {num(world['events'])} |",
         f"| Из них о власти — с причиной | {num(world['eventsWithCause'])} |",
         f"| Эпох рода | {num(world['periods'])} |",
+        f"| Людей с верой | {num(world['peopleWithFaith'])} из {num(world['people'])} |",
+        f"| Держав с верой | {num(world['realmsWithFaith'])} из {num(world['realmsInList'])} |",
+        f"| Разных вер в мире | {num(world['faiths'])} |",
         "",
         "| Кольцо знания | Держав |",
         "| --- | --- |",

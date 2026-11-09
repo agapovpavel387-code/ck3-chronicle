@@ -396,6 +396,12 @@ def main() -> None:
     )
     parser.add_argument("--map", type=Path, default=None, help="куда сохранить карту мира")
     parser.add_argument(
+        "--rites",
+        type=Path,
+        default=CACHE / "rites.json",
+        help="справочник обрядов от tools/faith_names.py: ключ → название и вера",
+    )
+    parser.add_argument(
         "--extra",
         type=Path,
         default=None,
@@ -430,7 +436,43 @@ def main() -> None:
     centroids = {int(k): v for k, v in json.loads((CACHE / "centroids.json").read_text(encoding="utf-8")).items()}
     adjacent = json.loads((CACHE / "adjacency.json").read_text(encoding="utf-8"))
 
-    # Проливы нужны только если игра под рукой: без неё работаем без них.
+    # --- Вера ---
+    # Экстрактор веру не отдаёт, но сейв хранит её номером обряда: человек и графство
+    # знают `rite`, реестр `rites` связывает его с ключом, ключ — с названием в
+    # локализации игры. Ничего не додумываем: нет обряда — нет веры.
+    RITE_NAMES = {}
+    if args.rites and args.rites.exists():
+        RITE_NAMES = json.loads(args.rites.read_text(encoding="utf-8"))
+        print(f"справочник обрядов: {len(RITE_NAMES)}", flush=True)
+    elif args.rites:
+        print(f"справочник обрядов не найден: {args.rites} — веры не будет", flush=True)
+
+    RITE_BY_ID = {int(k): v for k, v in (extra.get("rites") or {}).items()}
+    CHAR_RITES = {int(k): int(v) for k, v in (extra.get("char_rites") or {}).items()}
+    COUNTY_RITES = {k: int(v) for k, v in (extra.get("county_rites") or {}).items()}
+
+
+    def faith_of(rite_id) -> str | None:
+        """Название веры по номеру обряда: русское, иначе английское, иначе ключ."""
+        if rite_id is None:
+            return None
+        row = RITE_BY_ID.get(int(rite_id)) or {}
+        key = row.get("type")
+        if not key:
+            return None
+        names = (RITE_NAMES.get(key) or {}).get("names") or {}
+        return names.get("russian") or names.get("english") or key
+
+
+    def char_faith(char_id) -> str | None:
+        return faith_of(CHAR_RITES.get(int(char_id))) if char_id else None
+
+
+    def county_faith(key: str | None) -> str | None:
+        return faith_of(COUNTY_RITES.get(key)) if key else None
+
+
+# Проливы нужны только если игра под рукой: без неё работаем без них.
     straits = []
     adj_csv = (args.game / "map_data" / "adjacencies.csv") if args.game else None
     if adj_csv and adj_csv.exists():
@@ -487,7 +529,7 @@ def main() -> None:
                 "children": [ref(c) for c in (char.get("children") or []) if ref(c)],
                 "spouses": [ref(s) for s in (char.get("spouses") or []) if ref(s)],
                 "titles": [ref(t) for t in (char.get("titles") or []) if ref(t)],
-                "faith": (char.get("faith") or {}).get("name"),
+                "faith": char_faith(char.get("id")),
                 "culture": (char.get("culture") or {}).get("name"),
                 "traits": [str(t) for t in (char.get("traits") or []) if t][:6],
                 "skills": [int(s) for s in (char.get("skills") or []) if isinstance(s, (int, float))][:6],
@@ -731,8 +773,9 @@ def main() -> None:
         realm_id = top_liege(holder)
         if not realm_id:
             continue
-        if tile.get("faith"):
-            realm_faiths[realm_id][tile["faith"]] += 1
+        faith_here = county_faith(tile.get("key"))
+        if faith_here:
+            realm_faiths[realm_id][faith_here] += 1
         if tile.get("culture"):
             realm_cultures[realm_id][tile["culture"]] += 1
 
@@ -1923,6 +1966,12 @@ def main() -> None:
                 "since": person.get("birth"),
             }
         title_card["lords"] = lords
+        # Вера графств — для подсказки на карте: ключ графства → название веры.
+        title_card["faiths"] = {
+            key: faith for key in (title_card.get("counties") or []) if (faith := county_faith(key))
+        }
+        named = sum(1 for _ in title_card["faiths"])
+        print(f"вера графств: {named} из {len(title_card['counties'])}", flush=True)
         # Контрольные точки: пиксель карты → ожидаемый титул. По ним приложение
         # само видит, совпала ли карта с данными, и говорит об этом.
         meta_map = payload["mapIndex"]["titles"]

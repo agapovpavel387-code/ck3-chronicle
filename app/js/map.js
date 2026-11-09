@@ -479,6 +479,7 @@ function setupMap() {
     return {
       key,
       name: card.names?.[key] || key,
+      faith: card.faiths?.[key] || '', 
       chain: (card.chain?.[index - 1] || []).map((k) => ({ key: k, name: card.names?.[k] || k })),
       owner: card.owners?.[key] ?? null,
       people,
@@ -512,6 +513,7 @@ function setupMap() {
         <p class="small muted">${ownerName
           ? `${T('world.holderIs', 'Держатель')} — ${esc(ownerName)}${ownerHouse ? `, ${T('world.houseShort', 'дом')} ${esc(ownerHouse)}` : ''}${ownerRec && ownerRec.birth ? ` (${String(ownerRec.birth).slice(0, 4)}—${ownerRec.death ? String(ownerRec.death).slice(0, 4) : '…'})` : ''}.`
           : T('world.holderUnknown', 'Держатель неизвестен.')}</p>
+        ${title.faith ? `<p class="small muted">${T('world.faith', 'вера')} — ${esc(title.faith)}</p>` : ''}
         <p class="small muted">${vassalLine(title)}</p>
         <p class="small"><a href="#chronicle" data-title-link="${esc(title.key)}">${T('world.openChronicle', 'Смотреть хронику по этому титулу')}</a></p>`;
     const link = detail.querySelector('[data-title-link]');
@@ -546,7 +548,10 @@ function setupMap() {
       const rect = img.getBoundingClientRect();
       const chain = (card.chain?.[index - 1] || []).map((k) => card.names?.[k] || k);
       // Ключ титула в подсказке: по нему видно, карта это или данные.
-      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || T('world.freeCounty', 'вольное графство'))}</span><em class="map-tip__key">${esc(key)}</em>`;
+      const faith = card.faiths?.[key];
+      tip.innerHTML = `<b>${esc(card.names?.[key] || key)}</b><span>${esc(chain[0] || T('world.freeCounty', 'вольное графство'))}</span>`
+        + (faith ? `<span>${T('world.faith', 'вера')} — ${esc(faith)}</span>` : '')
+        + `<em class="map-tip__key">${esc(key)}</em>`;
       tip.hidden = false;
       const left = Math.max(8, Math.min(ev.clientX - rect.left, rect.width - 190));
       tip.style.left = left + 'px';

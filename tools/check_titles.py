@@ -183,6 +183,19 @@ def check_world(world_path: Path) -> None:
         seen.add(key)
     check("мир: одна смена — одна запись", not repeats, f"повторов: {len(repeats)} {repeats[:2]}")
 
+    # Вера: пришла из сейва через обряды. Пусто — не ошибка (у части земель обряда
+    # нет), но если вера есть, она должна быть названием, а доля — долей.
+    people = world.get("people") or []
+    realms = world.get("realms") or []
+    with_faith = [p for p in people if p.get("faith")]
+    check("вера: у людей есть названия", all(isinstance(p["faith"], str) and p["faith"].strip() for p in with_faith),
+          f"людей с верой {len(with_faith)} из {len(people)}")
+    bad_share = [r for r in realms if r.get("faithShare") is not None and not 0 < r["faithShare"] <= 1]
+    check("вера: доля державы в пределах", not bad_share, f"вне 1: {len(bad_share)}")
+    named_realm = [r for r in realms if r.get("faith")]
+    check("вера: державы получают веру из графств", len(named_realm) > len(realms) // 4,
+          f"держав с верой {len(named_realm)} из {len(realms)}")
+
     nameless = set()
     for event in successions:
         if event.get("who") is None:

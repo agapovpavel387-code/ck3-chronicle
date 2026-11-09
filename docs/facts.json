@@ -1,26 +1,30 @@
 {
-  "version": "0.6.5-alpha",
+  "version": "0.6.6-alpha",
   "world": {
     "date": "0917-01-18",
     "year": 917,
-    "build": "20261108235822",
+    "build": "20261109195025",
     "realms": 741,
     "known": 260,
     "people": 29,
     "dynasty": 11,
-    "events": 22648,
-    "eventsWithCause": 4379,
+    "events": 22646,
+    "eventsWithCause": 4376,
     "byRing": {
       "0": 1,
-      "1": 39,
+      "1": 40,
       "2": 131,
       "3": 192,
-      "4": 371,
+      "4": 370,
       "5": 4,
       "6": 2,
       "11": 1
     },
-    "periods": 1
+    "periods": 1,
+    "peopleWithFaith": 29,
+    "realmsWithFaith": 177,
+    "realmsInList": 260,
+    "faiths": 31
   },
   "titles": {
     "counties": 4703,
@@ -54,8 +58,8 @@
     },
     {
       "name": "check_titles.py",
-      "passed": 15,
-      "total": 15
+      "passed": 18,
+      "total": 18
     },
     {
       "name": "check_server.js",
@@ -63,5 +67,5 @@
       "total": 10
     }
   ],
-  "digest": "1d5d27ed8fb6b8903c26825313087da6e3161955ba6a4c34e08882c7b81120bc"
+  "digest": "5700efa9f9f1e1785dcfb9a8c3fe98e0482d9d7e96155fcc83ab6375c9a942c7"
 }

@@ -67,7 +67,13 @@ SKIP_NAMES = {"save-extra.json", ".DS_Store", "Thumbs.db"}
 
 # Ищем именно значения с этой машины и настоящие секреты, а не упоминания:
 # документация вправе говорить «положите tokens_1.tok рядом с экстрактором».
-FORBIDDEN_TEXT = [r"C:\\Users\\agapo", r"D:\\Games\\Crusader Kings III", r"ghp_[A-Za-z0-9]{20,}"]
+# Личный каталог не вписываем в код: он у каждого свой.
+_HOME = str(Path.home())
+FORBIDDEN_TEXT = [
+    re.escape(_HOME),
+    r"D:\\Games\\Crusader Kings III",
+    r"ghp_[A-Za-z0-9]{20,}",
+]
 FORBIDDEN_SUFFIXES = {".ck3", ".tok", ".exe"}
 # Сам проверяльщик содержит эти шаблоны как строки — его не сканируем.
 SKIP_SCAN = {"tools/release.py"}

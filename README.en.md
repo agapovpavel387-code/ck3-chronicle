@@ -23,6 +23,8 @@ The interface itself is in Russian, because it is built from a Russian-localized
 |---|---|
 | ![Chronicle by year](docs/screenshots/chronicle.png) | ![Generations](docs/screenshots/book.png) |
 
+> These frames predate 0.6.0: three map lenses are still on them, and the compendium looks different. Fresh ones come after the release.
+
 ## Quick start
 
 1. Download or clone this repository.
@@ -75,16 +77,6 @@ python tools/import_save.py --save "C:\saves\autosave.ck3" `
 ```
 
 `--lang` selects the localization used for names (default `russian`; use `english` for English names).
-
-## What it looks like
-
-| House | World |
-|---|---|
-| ![House](docs/screenshots/tree.png) | ![World](docs/screenshots/world.png) |
-
-| Chronicle | Compendium |
-|---|---|
-| ![Chronicle](docs/screenshots/chronicle.png) | ![Compendium](docs/screenshots/book.png) |
 
 ## Interface language
 

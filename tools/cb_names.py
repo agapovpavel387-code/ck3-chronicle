@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Имена поводов войны из локализации игры — вместо ручного словаря.
 
-    python tools/cb_names.py --game "D:\\Games\\Crusader Kings III\\game" --out _cache/cb-names.json
+    python tools/cb_names.py --game "<папка game игры Crusader Kings III>" --out _cache/cb-names.json
     python tools/cb_names.py --game "...\\game" --keys-from _cache/save-extra.json --check
 
 Зачем: в игре у каждого повода есть своё имя — ключ повода совпадает с ключом

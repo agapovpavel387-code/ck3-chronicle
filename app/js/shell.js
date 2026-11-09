@@ -170,6 +170,16 @@ function afterRender() {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         ctx.drawImage(img, 0, 0);
         let ok = 0;
+        let tainted = false;
+        try {
+          ctx.getImageData(0, 0, 1, 1);
+        } catch (error) {
+          tainted = true;
+        }
+        if (tainted) {
+          out.textContent = T('data.checkNeedServer', 'Откройте через start.cmd: браузер не даёт читать карту с диска.');
+          return;
+        }
         for (const point of card.probe) {
           const d = ctx.getImageData(point.x, point.y, 1, 1).data;
           const idx = (d[0] << 16) | (d[1] << 8) | d[2];

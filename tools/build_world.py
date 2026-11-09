@@ -1908,12 +1908,44 @@ def main() -> None:
             })
         title_card["probe"] = probe
 
+        # Земли рода: где именно правит династия. Пиксели нужны, чтобы приложение
+        # могло приблизить карту к этим графствам — на карте мира их не найти.
+        family_color = mix_with_paper(accent, 0.9)
+        family = []
+        for position, color in fills.items():
+            if color != family_color:
+                continue
+            key = title_card["counties"][position - 1]
+            provinces = [int(p) for p, v in title_card["province"].items() if v == position]
+            point = next((centroids.get(p) for p in provinces if centroids.get(p)), None)
+            if not point:
+                continue
+            family.append({
+                "key": key,
+                "name": title_card["names"].get(key) or key,
+                "x": round((point[0] - crop[0]) / scale),
+                "y": round((point[1] - crop[1]) / scale),
+            })
+        title_card["family"] = family
+        print(f"земли рода: {len(family)} графств с точками на карте", flush=True)
+
         card_text = json.dumps(title_card, ensure_ascii=False, separators=(",", ":"))
         (args.out.parent / "titles-map.json").write_text(card_text, encoding="utf-8")
         # Та же карта скриптом: с file:// fetch не работает, а <script> — работает.
         (args.out.parent / "titles-map.js").write_text(
             "window.__TITLES__=" + card_text + ";\n", encoding="utf-8"
         )
+        # Индексная карта строкой: при открытии по file:// браузер запрещает
+        # читать пиксели картинки с диска. data: — можно, этим и обходим.
+        index_png = args.out.parent / payload["mapIndex"]["titles"]["file"]
+        if index_png.exists():
+            import base64
+
+            encoded = base64.b64encode(index_png.read_bytes()).decode("ascii")
+            (args.out.parent / "titles-index.js").write_text(
+                'window.__TITLES_INDEX__="data:image/png;base64,' + encoded + '";\n',
+                encoding="utf-8",
+            )
         print(
             f"карта титулов: графств {title_card['stats']['counties']}, "
             f"провинций {title_card['stats']['provinces']}",

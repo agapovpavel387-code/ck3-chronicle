@@ -204,12 +204,48 @@ function setupMap() {
   // иначе координаты считаются по новой карте, а пиксели берутся из старой.
   let ctxFor = '';
 
-  pick.addEventListener('load', () => {
+  // Браузер считает картинку с диска «чужим» источником и не даёт читать её
+  // пиксели. Тогда берём ту же карту строкой data: — она читается.
+  let tainted = false;
+  const drawPick = (source) => {
     buffer.width = pick.naturalWidth;
     buffer.height = pick.naturalHeight;
     ctx = buffer.getContext && buffer.getContext('2d', { willReadFrequently: true });
-    if (ctx) ctx.drawImage(pick, 0, 0);
-    ctxFor = pick.src;
+    if (!ctx) return;
+    ctx.drawImage(source, 0, 0);
+    try {
+      ctx.getImageData(0, 0, 1, 1);
+      tainted = false;
+      ctxFor = pick.src;
+    } catch (error) {
+      tainted = true;
+      ctxFor = '';
+    }
+  };
+  pick.addEventListener('load', () => {
+    drawPick(pick);
+    if (!tainted) return;
+    // Запасной путь: та же индексная карта, но из скрипта.
+    const tag = state.world.meta?.build ? `?v=${state.world.meta.build}` : '';
+    loadScript('_data/titles-index.js' + tag).then(() => {
+      if (!window.__TITLES_INDEX__) return;
+      const alt = new Image();
+      alt.onload = () => {
+        buffer.width = alt.naturalWidth;
+        buffer.height = alt.naturalHeight;
+        ctx = buffer.getContext && buffer.getContext('2d', { willReadFrequently: true });
+        if (!ctx) return;
+        ctx.drawImage(alt, 0, 0);
+        try {
+          ctx.getImageData(0, 0, 1, 1);
+          tainted = false;
+          ctxFor = pick.src;
+        } catch (error) {
+          tainted = true;
+        }
+      };
+      alt.src = window.__TITLES_INDEX__;
+    });
   });
   const political = state.world.mapIndex?.political;
   const titles = state.world.mapIndex?.titles;
@@ -222,6 +258,47 @@ function setupMap() {
   pick.src = '_data/' + pickFile + (buildTag ? `?v=${buildTag}` : '');
 
   if (lens === 'power') loadTitlesCard();
+
+  // «Показать земли рода»: на карте мира одно-два графства не найти глазами.
+  const focusPoints = (points) => {
+    if (!points.length) return;
+    const xs = points.map((p) => p.x);
+    const ys = points.map((p) => p.y);
+    const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
+    const cy = (Math.min(...ys) + Math.max(...ys)) / 2;
+    const spread = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
+    const size = (buffer.width || 1);
+    const s = Math.min(4, Math.max(1.6, (size * 0.35) / Math.max(40, spread)));
+    zoom.s = s;
+    zoom.x = 0;
+    zoom.y = 0;
+    applyZoom();
+    const rect = img.getBoundingClientRect();
+    const px = rect.left + (cx / Math.max(1, buffer.width)) * rect.width;
+    const py = rect.top + (cy / Math.max(1, buffer.height)) * rect.height;
+    const wrapRect = wrapEl.getBoundingClientRect();
+    zoom.x += wrapRect.left + wrapRect.width / 2 - px;
+    zoom.y += wrapRect.top + wrapRect.height / 2 - py;
+    clampZoom();
+  };
+
+  if (lens === 'power') {
+    loadTitlesCard().then((card) => {
+      const points = card?.family || [];
+      const host = el('mapFigure');
+      if (!host || el('mapFamily')) return;
+      const box = document.createElement('p');
+      box.className = 'map-family';
+      box.id = 'mapFamily';
+      box.innerHTML = points.length
+        ? `<i class="map-family__dot"></i>${T('world.familyLands', 'Земли рода')}: <b>${points.length}</b> ${plural(points.length, 'графство', 'графства', 'графств')}
+           <button type="button" class="btn btn--ghost btn--small" id="familyJump">${T('world.familyShow', 'Показать')}</button>`
+        : `<i class="map-family__dot"></i>${T('world.familyNone', 'Род не держит графств в этом мире')}`;
+      host.insertBefore(box, el('mapDetail'));
+      const jump = el('familyJump');
+      if (jump) jump.addEventListener('click', () => focusPoints(points));
+    });
+  }
 
   // --- масштаб ---
   const wrapEl = wrap || img.parentElement;
@@ -325,7 +402,14 @@ function setupMap() {
 
   const indexAt = (ev) => {
     // Буфер должен быть от того же файла, что сейчас на экране.
-    if (!ctx || ctxFor !== pick.src) return 0;
+    if (!ctx || ctxFor !== pick.src) {
+      if (tainted && detail) {
+        detail.hidden = false;
+        detail.innerHTML = `<b>${T('world.needServer', 'Нужен запуск через start.cmd')}</b>
+            <p class="small muted">${T('world.needServerNote', 'Браузер запрещает читать карту, открытую с диска. Запустите start.cmd — откроется та же страница с сервера, и выбор графства заработает.')}</p>`;
+      }
+      return 0;
+    }
     const rect = img.getBoundingClientRect();
     if (!rect.width) return 0;
     const x = Math.floor(((ev.clientX - rect.left) / rect.width) * buffer.width);

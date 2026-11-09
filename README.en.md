@@ -128,7 +128,7 @@ ck3_history_extractor.exe "save.ck3" -g "$env:CK3_GAME" `
 
 # 3. build the world and its map
 python tools/build_world.py --dump out\gamestate.json `
-    -o app\_data\world.json --map app\_data\world-map.png
+    -o app\_data\world.js --map app\_data\world-map.png
 ```
 
 Without `--game` the world is still built, just without a map: the map needs `map_data` and `common/landed_titles` from the game.

@@ -1,6 +1,6 @@
 # Chronicle of the House
 
-**Alpha 0.6.6** · Crusader Kings III 1.20.x
+**Alpha 0.6.7** · Crusader Kings III 1.20.x
 
 ![status](https://img.shields.io/badge/status-alpha-orange)
 ![CK3](https://img.shields.io/badge/Crusader%20Kings%20III-1.20.x-6b5b45)

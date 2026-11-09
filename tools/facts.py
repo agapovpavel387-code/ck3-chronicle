@@ -68,6 +68,10 @@ def world_facts() -> dict:
         "realmsInList": len(realms_list),
         "faiths": len({p["faith"] for p in (world.get("people") or []) if p.get("faith")}
                       | {r["faith"] for r in (world.get("realms") or []) if r.get("faith")}),
+        # Двор: форма правления, наследование, министерства.
+        "realmsWithGovernment": sum(1 for r in realms_list if r.get("governmentName")),
+        "realmsWithSuccession": sum(1 for r in realms_list if r.get("succession")),
+        "ministries": sum(len(r.get("ministers") or []) for r in realms_list),
     }
 
 
@@ -162,6 +166,9 @@ def render_md(facts: dict) -> str:
         f"| Людей с верой | {num(world['peopleWithFaith'])} из {num(world['people'])} |",
         f"| Держав с верой | {num(world['realmsWithFaith'])} из {num(world['realmsInList'])} |",
         f"| Разных вер в мире | {num(world['faiths'])} |",
+        f"| Держав с формой правления | {num(world['realmsWithGovernment'])} из {num(world['realmsInList'])} |",
+        f"| Держав с очередью наследования | {num(world['realmsWithSuccession'])} из {num(world['realmsInList'])} |",
+        f"| Министерств с титулом | {num(world['ministries'])} |",
         "",
         "| Кольцо знания | Держав |",
         "| --- | --- |",

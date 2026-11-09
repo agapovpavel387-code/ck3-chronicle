@@ -1,9 +1,9 @@
 {
-  "version": "0.6.6-alpha",
+  "version": "0.6.7-alpha",
   "world": {
     "date": "0917-01-18",
     "year": 917,
-    "build": "20261109195025",
+    "build": "20261109204913",
     "realms": 741,
     "known": 260,
     "people": 29,
@@ -24,7 +24,10 @@
     "peopleWithFaith": 29,
     "realmsWithFaith": 177,
     "realmsInList": 260,
-    "faiths": 31
+    "faiths": 31,
+    "realmsWithGovernment": 257,
+    "realmsWithSuccession": 215,
+    "ministries": 9
   },
   "titles": {
     "counties": 4703,
@@ -58,8 +61,8 @@
     },
     {
       "name": "check_titles.py",
-      "passed": 18,
-      "total": 18
+      "passed": 22,
+      "total": 22
     },
     {
       "name": "check_server.js",
@@ -67,5 +70,5 @@
       "total": 10
     }
   ],
-  "digest": "5700efa9f9f1e1785dcfb9a8c3fe98e0482d9d7e96155fcc83ab6375c9a942c7"
+  "digest": "fa75629462c7bf19520ce2956c5862b2fe41c4f75cf8b2a0a9f60cb13bde8191"
 }

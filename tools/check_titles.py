@@ -196,6 +196,20 @@ def check_world(world_path: Path) -> None:
     check("вера: державы получают веру из графств", len(named_realm) > len(realms) // 4,
           f"держав с верой {len(named_realm)} из {len(realms)}")
 
+    # Двор: форма правления из сейва, министры — титулы с живыми держателями.
+    with_gov = [r for r in realms if r.get("governmentName")]
+    check("двор: у держав есть название правления", len(with_gov) > len(realms) // 2,
+          f"держав с правлением {len(with_gov)} из {len(realms)}")
+    raw_keys = [r for r in with_gov if r["governmentName"] == r.get("government")]
+    check("двор: названия правления переведены", len(raw_keys) <= max(1, len(with_gov) // 20),
+          f"ключей вместо названий {len(raw_keys)}")
+    ministers = [m for r in realms for m in (r.get("ministers") or [])]
+    check("двор: у министерств есть держатели", all(m.get("holder") for m in ministers),
+          f"министерств {len(ministers)}, без держателя {sum(1 for m in ministers if not m.get('holder'))}")
+    # Сверяем по id, а не по имени: тёзки в династиях обычное дело.
+    bad_queue = [r for r in realms if r.get("successionIds") and r.get("id") in r["successionIds"]]
+    check("двор: правитель не стоит в своей очереди", not bad_queue, f"совпадений: {len(bad_queue)}")
+
     nameless = set()
     for event in successions:
         if event.get("who") is None:

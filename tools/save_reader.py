@@ -313,6 +313,112 @@ def read_faith(path: Path) -> dict:
     return {"rites": rites, "char_rites": char_rites, "county_rites": county_rites}
 
 
+GOV_RE = re.compile(r"^\s*government=([a-z0-9_]+)\s*$")
+MERIT_RE = re.compile(r"^\s*currency=([\d.]+)\s*$")
+LIST_KEYS = ("succession", "heir", "council")
+
+
+def read_court(path: Path) -> dict:
+    """Двор державы: форма правления, очередь наследования, совет, заслуга.
+
+    Всё это лежит у персонажа-правителя. Списки (`succession`, `heir`, `council`)
+    бывают на несколько строк, поэтому собираются до закрывающей скобки.
+    """
+    government: dict[str, str] = {}
+    lists: dict[str, dict[str, list[int]]] = {key: {} for key in LIST_KEYS}
+    merit: dict[str, float] = {}
+
+    with zipfile.ZipFile(path) as archive, archive.open("gamestate") as raw:
+        depth = 0
+        section = None
+        person = None
+        pending = None          # какой список собираем
+        pending_ids: list[int] = []
+        pending_depth = 0
+        in_merit = False
+        merit_depth = 0
+
+        for raw_line in raw:
+            line = raw_line.decode("utf-8", "replace").rstrip("\r\n")
+            stripped = line.strip()
+            delta = brace_delta(line)
+
+            if depth == 0:
+                match = SECTION_RE.match(line)
+                section = match.group(1) if match else None
+                person = None
+                pending = None
+                in_merit = False
+                depth += delta
+                continue
+
+            if section not in CHAR_SECTIONS:
+                depth += delta
+                continue
+
+            if pending:
+                pending_ids.extend(int(x) for x in re.findall(r"\b(\d{1,12})\b", stripped))
+                pending_depth += delta
+                if pending_depth <= 0:
+                    lists[pending][person] = pending_ids
+                    pending = None
+                depth += delta
+                continue
+
+            if in_merit:
+                merit_depth += delta
+                match = MERIT_RE.match(line)
+                if match and person:
+                    merit[person] = float(match.group(1))
+                if merit_depth <= 0:
+                    in_merit = False
+                depth += delta
+                continue
+
+            match = CHAR_ID_RE.match(line)
+            if match:
+                person = match.group(1)
+                depth += delta
+                continue
+            if not person:
+                depth += delta
+                continue
+
+            match = GOV_RE.match(line)
+            if match:
+                government[person] = match.group(1)
+                depth += delta
+                continue
+
+            started = next((key for key in LIST_KEYS if stripped.startswith(key + "={")), None)
+            if started:
+                pending = started
+                body = stripped[len(started) + 2:]
+                pending_depth = 1 + body.count("{") - body.count("}")
+                pending_ids = [int(x) for x in re.findall(r"\b(\d{1,12})\b", body)]
+                if pending_depth <= 0:
+                    lists[pending][person] = pending_ids
+                    pending = None
+                depth += delta
+                continue
+
+            if stripped.startswith("merit={"):
+                in_merit = True
+                merit_depth = 1 + stripped.count("{") - stripped.count("}")
+                depth += delta
+                continue
+
+            depth += delta
+
+    return {
+        "government": government,
+        "succession": lists["succession"],
+        "heir": lists["heir"],
+        "council": lists["council"],
+        "merit": merit,
+    }
+
+
 def read_save(path: Path) -> dict:
     names = ""
     try:
@@ -444,6 +550,7 @@ def read_save(path: Path) -> dict:
         )
 
     faith = read_faith(path)
+    court = read_court(path)
     return {
         "source": str(path),
         "date": save_date or meta_date,
@@ -454,6 +561,11 @@ def read_save(path: Path) -> dict:
         "rites": faith["rites"],
         "char_rites": faith["char_rites"],
         "county_rites": faith["county_rites"],
+        "government": court["government"],
+        "succession": court["succession"],
+        "heir": court["heir"],
+        "council": court["council"],
+        "merit": court["merit"],
     }
 
 

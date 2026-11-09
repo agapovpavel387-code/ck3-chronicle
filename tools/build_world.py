@@ -396,6 +396,12 @@ def main() -> None:
     )
     parser.add_argument("--map", type=Path, default=None, help="куда сохранить карту мира")
     parser.add_argument(
+        "--governments",
+        type=Path,
+        default=CACHE / "governments.json",
+        help="справочник форм правления от tools/government_names.py",
+    )
+    parser.add_argument(
         "--rites",
         type=Path,
         default=CACHE / "rites.json",
@@ -470,6 +476,29 @@ def main() -> None:
 
     def county_faith(key: str | None) -> str | None:
         return faith_of(COUNTY_RITES.get(key)) if key else None
+
+    # --- Двор: форма правления, наследование, совет, заслуга ---
+    # Экстрактор этого не отдаёт; всё лежит в сейве у персонажа-правителя.
+    GOV_NAMES = {}
+    if args.governments and args.governments.exists():
+        GOV_NAMES = json.loads(args.governments.read_text(encoding="utf-8"))
+    elif args.governments:
+        print(f"справочник форм правления не найден: {args.governments}", flush=True)
+
+    GOVERNMENT = {int(k): v for k, v in (extra.get("government") or {}).items()}
+    SUCCESSION = {int(k): v for k, v in (extra.get("succession") or {}).items()}
+    HEIRS = {int(k): v for k, v in (extra.get("heir") or {}).items()}
+    COUNCIL = {int(k): v for k, v in (extra.get("council") or {}).items()}
+    MERIT = {int(k): float(v) for k, v in (extra.get("merit") or {}).items()}
+
+    def gov_name(key: str | None) -> str | None:
+        if not key:
+            return None
+        names = (GOV_NAMES.get(key) or {}).get("names") or {}
+        return names.get("russian") or names.get("english") or key
+
+    def name_of(cid) -> str:
+        return (characters.get(int(cid)) or {}).get("name") or ""
 
 
 # Проливы нужны только если игра под рукой: без неё работаем без них.
@@ -787,6 +816,42 @@ def main() -> None:
         realm["faiths"] = faiths_here.most_common(3) if faiths_here else []
         realm["culture"] = cultures_here.most_common(1)[0][0] if cultures_here else None
         realm["cultureShare"] = round(cultures_here.most_common(1)[0][1] / sum(cultures_here.values()), 2) if cultures_here else None
+
+    # Двор державы: то, чего нет в дампе и что сейв хранит у правителя.
+    for realm_id, realm in realms.items():
+        key = GOVERNMENT.get(realm_id)
+        realm["government"] = key
+        realm["governmentName"] = gov_name(key)
+        # Очередь наследования: порядок тот же, что в сейве, имён не выдумываем.
+        # Правитель сам себе наследником не бывает: выкидываем его из очереди.
+        ids = [int(cid) for cid in (SUCCESSION.get(realm_id) or []) if int(cid) != realm_id]
+        realm["succession"] = [name for name in (name_of(cid) for cid in ids) if name][:5]
+        realm["successionIds"] = ids[:5]
+        realm["successionCount"] = len(ids)
+        realm["heirs"] = [name_of(cid) for cid in (HEIRS.get(realm_id) or []) if name_of(cid)][:3]
+        realm["council"] = [name_of(cid) for cid in (COUNCIL.get(realm_id) or []) if name_of(cid)][:12]
+        realm["merit"] = round(MERIT[realm_id], 1) if realm_id in MERIT else None
+
+    # Министерства — это титулы `e_minister_*`: держатель титула и есть министр.
+    ministers: dict[int, list] = defaultdict(list)
+    for tile in titles.values():
+        key = tile.get("key") or ""
+        if not key.startswith("e_minister"):
+            continue
+        holder = tile.get("holder")
+        if not holder:
+            continue
+        realm_id = top_liege(holder)
+        if not realm_id:
+            continue
+        ministers[realm_id].append({
+            "key": key,
+            "title": tile.get("name") or key,
+            "holder": name_of(holder),
+            "house": (characters.get(holder) or {}).get("house_name") or "",
+        })
+    for realm_id, realm in realms.items():
+        realm["ministers"] = sorted(ministers.get(realm_id) or [], key=lambda m: m["title"])
 
     # Соседство держав — для рассказа о том, кто с кем граничит.
     realm_adjacency: dict[int, set[int]] = defaultdict(set)
@@ -1851,6 +1916,15 @@ def main() -> None:
                 "faith": r.get("faith"),
                 "faithShare": r.get("faithShare"),
                 "faiths": r.get("faiths"),
+                "government": r.get("government"),
+                "governmentName": r.get("governmentName"),
+                "succession": r.get("succession"),
+                "successionIds": r.get("successionIds"),
+                "successionCount": r.get("successionCount"),
+                "heirs": r.get("heirs"),
+                "council": r.get("council"),
+                "ministers": r.get("ministers"),
+                "merit": r.get("merit"),
                 "culture": r.get("culture"),
                 "cultureShare": r.get("cultureShare"),
                 "domain": r.get("domain"),

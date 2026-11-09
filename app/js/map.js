@@ -40,7 +40,9 @@ function viewWorld() {
               </div>
               <p class="court__what${r.ring >= 3 ? ' court__what--faint' : ''}">${esc(knownLine(r))}</p>
               <p class="court__meta">${esc(dirText(r.direction || ''))}${r.size ? ` · ${T('world.holdings', 'владений')} ${r.size}` : ''}${r.prestige ? ` · ${T('world.prestigeShort', 'слава')} ${r.prestige}` : ''}</p>
+              ${r.governmentName ? `<p class="court__meta">${T('world.government', 'правление')} — ${esc(r.governmentName)}${r.merit ? ` · ${T('world.merit', 'заслуга')} ${r.merit}` : ''}</p>` : ''}
               ${r.faith ? `<p class="court__meta">${T('world.faith', 'вера')} — ${esc(r.faith)}${r.faithShare ? ` (${Math.round(r.faithShare * 100)}%)` : ''}${r.culture ? ` · ${esc(r.culture)}` : ''}</p>` : ''}
+              ${r.succession && r.succession.length ? `<p class="court__meta">${T('world.succession', 'престолонаследие')} — ${esc(r.succession.join(', '))}</p>` : ''}
             </article>`).join('')}
           </div>
         </section>`;

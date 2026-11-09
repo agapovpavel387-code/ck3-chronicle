@@ -160,13 +160,14 @@ function dossierText() {
   out.push('## Державы в поле зрения');
   const anyFaith = realms.some((r) => r.faith);
   if (!anyFaith) {
-    out.push('Вера не привязана: в сейве 1.20 определения вер читаются (108 вер), но ни у людей, ни у графств нет ссылки на веру. Культура при этом есть.');
+    out.push('Вера не привязана: в этом сейве у держав нет обряда, по которому она читается.');
     out.push('');
   }
   realms.sort((a, b) => a.ring - b.ring || (a.distance ?? 1e9) - (b.distance ?? 1e9));
   for (const r of realms) {
     const head = [`${r.name} — ${TIER_RU[r.tier] || 'владение'}`, `кольцо ${r.ring}`, r.distance != null ? `${r.distance} px ${r.direction || ''}`.trim() : ''];
     if (r.ring <= 2 && r.ruler) head.push(`государь: ${r.ruler}${r.house ? `, дом ${r.house}` : ''}`);
+    if (r.governmentName) head.push(`правление: ${r.governmentName}`);
     if (r.faith) head.push(`вера: ${r.faith}${r.faithShare ? ` (${Math.round(r.faithShare * 100)}%)` : ''}`);
     if (r.culture) head.push(`культура: ${r.culture}${r.cultureShare ? ` (${Math.round(r.cultureShare * 100)}%)` : ''}`);
     if (r.domain && r.domain.length > 1) {
@@ -175,6 +176,12 @@ function dossierText() {
       head.push(`владений: ${last[1]} (в ${base[0]} — ${base[1]})`);
     }
     out.push(`- ${head.filter(Boolean).join('; ')}`);
+    if (r.succession && r.succession.length) {
+      out.push(`    престолонаследие: ${r.succession.join(', ')}${r.successionCount > r.succession.length ? ` и ещё ${r.successionCount - r.succession.length}` : ''}`);
+    }
+    if (r.ministers && r.ministers.length) {
+      out.push(`    министерства: ${r.ministers.map((m) => `${m.title} — ${m.holder || 'место пусто'}`).join('; ')}`);
+    }
     if (r.rulers && r.rulers.length > 1) {
       out.push(`    смена государей: ${r.rulers.map((x) => `${x.name || 'имени не сохранилось'} ${yr(x.from)}—${yr(x.to)}${x.faith ? ` (${x.faith})` : ''}`).join('; ')}`);
     }

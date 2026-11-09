@@ -55,7 +55,8 @@ TOP_FILES = [
     "make.cmd",
 ]
 
-DIRS = ["app", "docs", "tools"]
+# `patches/` кладём в архив: на неё ссылаются README, CHANGELOG и docs.
+DIRS = ["app", "docs", "tools", "patches"]
 
 # Кэш карты нужен, чтобы мир собирался без папки игры. `save-extra.json` — нет:
 # это выгрузка из сейва пользователя, в публичный архив она не идёт.
@@ -244,7 +245,7 @@ def main() -> int:
             {"path": p.relative_to(ROOT).as_posix(), "bytes": p.stat().st_size, "sha256": sha256_file(p)}
             for p in files
         ],
-        "excluded": ["patches/", "_cache/save-extra.json", "_cache/titles.json",
+        "excluded": ["_cache/save-extra.json", "_cache/titles.json",
                      "app/start.bat", "node_modules/", "vendor/", "dist/", "__pycache__/"],
     }
     manifest_path = out / f"{prefix}.manifest.json"

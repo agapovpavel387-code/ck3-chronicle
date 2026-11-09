@@ -1,6 +1,6 @@
 # Chronicle of the House
 
-**Alpha 0.5.0** · Crusader Kings III 1.20.x
+**Alpha 0.6.5** · Crusader Kings III 1.20.x
 
 ![status](https://img.shields.io/badge/status-alpha-orange)
 ![CK3](https://img.shields.io/badge/Crusader%20Kings%20III-1.20.x-6b5b45)
@@ -40,7 +40,7 @@ Other ways to start:
 | `node tools/serve.js --port 9000` | custom port |
 | open `app/index.html` directly | works, because the demo world is also stored as `world.js` |
 
-The world in `app/_data` is a 917 campaign of the House of Zhu: 260 realms in view (of 741), 22 651 events, 11 kin in the dynasty, 11 378 events with a cause. Realm and personal culture are read; faith is not: a 1.20 save keeps faith definitions but no link to people or counties, and the dossier says so plainly. Your own world is built by the same command (see below).
+The world in `app/_data` is a 917 campaign of the House of Zhu. How many realms, people, kin and events it holds is in [docs/facts.md](docs/facts.md): those numbers are counted from the data, not typed into prose. Realm and personal culture are read; faith is not: a 1.20 save keeps faith definitions but no link to people or counties, and the dossier says so plainly. Your own world is built by the same command (see below).
 
 ## Import your own save
 
@@ -160,7 +160,7 @@ npm install
 npm test
 ```
 
-Four suites: app (37 checks), house outline (15), chronicle (14), map lenses (12). They run in jsdom, no browser needed.
+Suites: app, house outline, chronicle, map lenses, server, and the Python self-checks. They run in jsdom, no browser needed; the number of checks in each is in [docs/facts.md](docs/facts.md).
 
 ## Data and privacy
 

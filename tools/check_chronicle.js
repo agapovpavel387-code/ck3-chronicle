@@ -213,6 +213,24 @@ const check = (name, ok, extra = '') => results.push({ name, ok, extra });
   check('у потери титула назван новый держатель', Boolean(lossEvent) && /отошёл/.test(window.entryText(lossEvent)),
     lossEvent ? window.entryText(lossEvent).slice(0, 110) : 'нет события');
 
+  // Данные: одна весть — одна строка. Ключ тот же, что в build_world.py: (kind, date, who, who2, type, titleKey).
+  const identity = (e) => [e.kind, e.date, e.who, e.who2, e.type, e.titleKey].map((v) => v ?? '').join('|');
+  const seenEvents = new Set();
+  const duplicateEvents = (world.events || []).filter((e) => {
+    const key = identity(e);
+    if (seenEvents.has(key)) return true;
+    seenEvents.add(key);
+    return false;
+  });
+  check('нет событий-дублей', duplicateEvents.length === 0, `дублей: ${duplicateEvents.length}`);
+
+  const emptyWhy = (world.events || []).filter((e) => e.why === '').length;
+  check('пустая причина — это null', emptyWhy === 0, `пустых строк: ${emptyWhy}`);
+
+  const metaEvents = world.meta && world.meta.counts ? world.meta.counts.events : -1;
+  check('счёт событий в meta совпадает с длиной', metaEvents === (world.events || []).length,
+    `${metaEvents} против ${(world.events || []).length}`);
+
   check('нет ошибок jsdom', errors.length === 0, errors.slice(0, 2).join(' | '));
 
   let failed = 0;

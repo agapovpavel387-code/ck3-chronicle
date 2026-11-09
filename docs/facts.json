@@ -1,0 +1,67 @@
+{
+  "version": "0.6.5-alpha",
+  "world": {
+    "date": "0917-01-18",
+    "year": 917,
+    "build": "20261108235822",
+    "realms": 741,
+    "known": 260,
+    "people": 29,
+    "dynasty": 11,
+    "events": 22648,
+    "eventsWithCause": 4379,
+    "byRing": {
+      "0": 1,
+      "1": 39,
+      "2": 131,
+      "3": 192,
+      "4": 371,
+      "5": 4,
+      "6": 2,
+      "11": 1
+    },
+    "periods": 1
+  },
+  "titles": {
+    "counties": 4703,
+    "duchies": 1316,
+    "kingdoms": 270,
+    "empires": 89,
+    "landedChains": 4703,
+    "provinces": 11677,
+    "chainShare": 0.739
+  },
+  "tests": [
+    {
+      "name": "check_app.js",
+      "passed": 38,
+      "total": 38
+    },
+    {
+      "name": "check_tree.js",
+      "passed": 15,
+      "total": 15
+    },
+    {
+      "name": "check_chronicle.js",
+      "passed": 46,
+      "total": 46
+    },
+    {
+      "name": "check_lens.js",
+      "passed": 15,
+      "total": 15
+    },
+    {
+      "name": "check_titles.py",
+      "passed": 15,
+      "total": 15
+    },
+    {
+      "name": "check_server.js",
+      "passed": 10,
+      "total": 10
+    }
+  ],
+  "digest": "1d5d27ed8fb6b8903c26825313087da6e3161955ba6a4c34e08882c7b81120bc"
+}

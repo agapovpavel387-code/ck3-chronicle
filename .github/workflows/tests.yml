@@ -1,4 +1,4 @@
-name: tests
+name: checks
 
 on:
   push:
@@ -18,7 +18,28 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
       - name: Install test dependency
         run: npm ci --no-audit --no-fund
-      - name: Run checks
-        run: npm test
+
+      # Первый гейт: версия, числа и документы сходятся с данными.
+      - name: Version, numbers, documents
+        run: |
+          python tools/stamp.py --check
+          python tools/facts.py --check
+          python tools/check_docs.py
+
+      - name: Checks
+        run: |
+          set -o pipefail
+          npm test | tee "$RUNNER_TEMP/test.log"
+
+      # Второй гейт: счёт проверок в docs/facts.md совпадает с этим прогоном.
+      - name: Facts must match this run
+        run: |
+          python tools/facts.py --write --test-log "$RUNNER_TEMP/test.log"
+          git diff --exit-code docs/facts.json docs/facts.md
+
+      # Третий гейт: архив собирается и проходит самопроверку.
+      - name: Release builds and verifies
+        run: python tools/release.py --skip-tests

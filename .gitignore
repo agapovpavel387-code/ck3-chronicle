@@ -1,4 +1,4 @@
-﻿# сейвы и дампы
+# сейвы и дампы
 *.ck3
 gamestate*.json
 _source/
@@ -26,3 +26,5 @@ vendor/
 *.exe
 
 app/_export/
+dist/
+_cache/test.log

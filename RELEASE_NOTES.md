@@ -1,4 +1,4 @@
-# Хроника рода 0.6.4-alpha — заметки к выпуску
+# Хроника рода 0.6.5-alpha — заметки к выпуску
 
 **Что это.** Локальное приложение, которое читает сохранение Crusader Kings III и показывает мир глазами одной семьи: что до рода дошло — своим знанием, вестями и молвой. Ничего не отправляется в сеть, аккаунт не нужен.
 
@@ -32,7 +32,8 @@
 - **войны:** повод из локализации игры и цель войны, исход по истории титула;
 - **смерти:** причина из данных игры без разметки («во сне», «от старости», «от чахотки»);
 - импорт своего сохранения из панели, с журналом и отменой;
-- интерфейс на русском и английском: переключатель RU/EN, выбор запоминается.
+- интерфейс на русском и английском: переключатель RU/EN, выбор запоминается;
+- **проверенная сборка:** версия, числа и документы сверяются одной командой, архив собирается `make.cmd` с манифестом и самопроверкой.
 
 ## Чего в альфе нет
 
@@ -48,7 +49,7 @@
 
 ---
 
-# Chronicle of the House 0.6.4-alpha — release notes
+# Chronicle of the House 0.6.5-alpha — release notes
 
 **What it is.** A local app that reads a Crusader Kings III save and shows the world through one family's eyes: what actually reached the house — its own records, messages, and hearsay. Nothing is sent over the network, no account needed.
 
@@ -72,7 +73,8 @@ Either Node.js (recommended, no dependencies) or Python 3 is enough. Importing y
 - **wars:** the casus belli from the game's own localization and the war goal;
 - **deaths:** the cause as the game recorded it;
 - importing your own save from the page, with a live log and a stop button;
-- the interface in Russian and English, with a RU/EN switch that remembers the choice.
+- the interface in Russian and English, with a RU/EN switch that remembers the choice;
+- **a verified build:** version, numbers and documents are checked by one command; the archive is built by `make.cmd` with a manifest and a self-check.
 
 ## What is not here
 

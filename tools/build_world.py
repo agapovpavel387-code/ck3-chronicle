@@ -359,6 +359,30 @@ def is_shown(tile: dict | None) -> bool:
     return not (name.startswith("X ") or "laamp" in low or "script" in low or "nomad" in low)
 
 
+# Титул в ключе обязателен: в один день без держателя могут смениться два
+# разных титула («Уйгурское ханство» и «Ченла») — это две вести, а не дубль.
+IDENTITY_FIELDS = ("kind", "date", "who", "who2", "type", "titleKey")
+
+
+def dedupe_events(events: list[dict]) -> list[dict]:
+    """Одна весть — одна строка.
+
+    Дамп и история титула рассказывают об одном и том же с двух сторон:
+    совпали вид, дата, участники и тип — значит это дубль, а не второе событие.
+    Ключ намеренно узкий: две разные войны одного государя в один день
+    отличаются типом и остаются обе.
+    """
+    seen: set[tuple] = set()
+    unique: list[dict] = []
+    for event in events:
+        key = tuple(event.get(field) for field in IDENTITY_FIELDS)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(event)
+    return unique
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dump", type=Path, required=True)
@@ -1371,6 +1395,17 @@ def main() -> None:
         for e in events
         if e["kind"] != "succession" or not e.get("who") or best_succession[(e["date"], e["who"])] is e
     ]
+
+    before = len(events)
+    events = dedupe_events(events)
+    if before != len(events):
+        print(f"дублей сведено: {before - len(events)}", flush=True)
+
+    # Пустая причина — это отсутствие причины, а не пустая строка:
+    # иначе проверки видят truthy-значение и считают событие объяснённым.
+    for event in events:
+        if not event.get("why"):
+            event["why"] = None
 
     events.sort(key=lambda e: (e["date"], e["kind"]))
 

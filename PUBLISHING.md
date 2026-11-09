@@ -1,77 +1,59 @@
 # Выкладка на GitHub / Publishing
 
-Памятка: что уже готово, что сделать руками при публикации.
-A checklist: what is ready and what to do by hand when publishing.
+Памятка: что проверяется само, а что делается руками при публикации.
 
 ## Что готово
 
-- ветка `main`, рабочее дерево чистое; авторы коммитов — ваш аккаунт;
-- тег `0.5.0-alpha`;
-- `VERSION`, `CHANGELOG.md`, `RELEASE_NOTES.md`;
-- README на двух языках, `CONTRIBUTING.md`, шаблон issue;
-- CI: `.github/workflows/tests.yml` — гоняет `npm test` на каждый push;
-- `.gitattributes` (LF в репозитории), `.gitignore` (сейвы, дампы, кэш, `_export`, `import`);
-- ни личных путей, ни токенов в файлах нет — проверено поиском.
+- `VERSION` — единственный источник версии; `python tools/stamp.py --check` сверяет с ним
+  `package.json`, `index.html`, шапки README и `RELEASE_NOTES`;
+- `docs/facts.md` — числа мира, посчитанные из данных (`tools/facts.py --check`);
+- `tools/check_docs.py` — ссылки, версия в шапке, запрет вписанных руками чисел;
+- `tools/release.py` и `make.cmd` — архив по белому списку, манифест с sha256, распаковка и проверка;
+- CI `.github/workflows/tests.yml` — те же гейты на каждый push;
+- README на двух языках, `CONTRIBUTING.md`, шаблон issue, `LICENSE`, `NOTICE`.
 
-## Шаг 1. Создать пустой репозиторий
-
-Вариант с `gh` (если установлен):
+## Шаг 1. Коммит и теги
 
 ```powershell
-gh repo create ck3-chronicle --public --source . --remote origin --push
+$v = (Get-Content VERSION -Raw).Trim()
+git add -A
+git commit -m "…"
+git tag -a $v -m $v
+git push origin main
+git push origin --tags
 ```
 
-Вариант через сайт: github.com → **New repository** → имя `ck3-chronicle` →
-**без** README, .gitignore и лицензии (они уже есть) → Create.
-
-## Шаг 2. Подключить и запушить
+## Шаг 2. Сборка архива
 
 ```powershell
-cd ck3-chronicle
-git remote add origin https://github.com/agapovpavel387-code/ck3-chronicle.git
-git push -u origin main --force-with-lease
-git push origin 0.5.0-alpha
+.\make.cmd
 ```
 
-## Шаг 3. Описание и темы репозитория
+Он прогонит тесты, пересчитает `docs/facts.md`, проверит документы, соберёт
+`dist/chronicle-of-the-house-<версия>.zip` и рядом `.manifest.json` (список файлов, размеры,
+sha256), распакует архив и проверит его: `index.html` на месте, `world.js` разбирается,
+сейвов, токенов и личных путей нет. Архив, не прошедший самопроверку, выпускать нельзя.
 
-Description:
+## Шаг 3. Release
 
-> Chronicle of the House — a local app that turns a Crusader Kings III save into a family chronicle: house lines, map lenses, a layered chronicle. Alpha, CK3 1.20.x.
+Тег → **Draft a new release** → заголовок = версия → в описание вставить `RELEASE_NOTES.md`
+→ приложить два архива:
 
-Topics:
+- `dist/chronicle-of-the-house-<версия>.zip` — приложение;
+- `ck3_history_extractor-2.4.7-ck3-1.20-win64.zip` — экстрактор с патчем 1.20
+  (в git не входит, поэтому прикладывается отдельно).
 
-```
-crusader-kings-3 ck3 paradox-interactive save-parser alfa alpha
-javascript vanilla-js local-first offline rust-extractor game-tools history-visualization
-```
+## Шаг 4. Проверка после публикации
 
-## Шаг 4. Release
-
-Тег `0.5.0-alpha` → **Draft a new release** → выбрать тег → заголовок `0.5.0-alpha` →
-в описание вставить раздел из `RELEASE_NOTES.md` → приложить два архива:
-
-- `chronicle-of-the-house-0.5.0-alpha.zip` — приложение;
-- `ck3_history_extractor-2.4.7-ck3-1.20-win64.zip` — экстрактор с патчем 1.20 (без него импорт не работает, в git он не входит).
-
-## Шаг 5. Проверка после публикации
-
-1. Открыть репозиторий в режиме инкогнито: README читается, картинок-заглушек нет.
-2. Вкладка **Actions** — workflow `tests` прошёл.
-3. Скачать архив из Release, распаковать, запустить `start.cmd` — приложение открывается.
-4. Проверить, что в репозитории нет файлов больше 50 МБ (сейчас максимум — `world.js`, 7,5 МБ).
+1. Вкладка **Actions** — workflow `checks` зелёный.
+2. Скачать архив из Release, распаковать, запустить `start.cmd` — приложение открывается.
+3. В репозитории нет файлов больше 50 МБ (самый крупный — `world.js`).
 
 ## Чего в репозитории быть не должно
 
-- `.ck3`, `gamestate.json`, `_cache/`, `import/`, `_export/`, `node_modules/` — всё в `.gitignore`;
+- `.ck3`, `gamestate.json`, `_cache/`, `import/`, `_export/`, `dist/`, `node_modules/`;
 - личных путей вида `C:\Users\...`, `D:\Games\...`;
 - токенов `tokens_1.tok`.
 
-Проверка перед пушем:
-
-```powershell
-git ls-files | Select-String '_cache|_export|import/|\.ck3$|gamestate'
-Select-String -Path (git ls-files) -Pattern 'C:\\Users\\|D:\\Games|ghp_'
-```
-
-Обе команды должны ничего не найти.
+Проверка одна на всё: `python -X utf8 tools/release.py --skip-tests` — самопроверка архива
+ловит и пути, и сейвы, и токены.
